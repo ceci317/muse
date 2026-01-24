@@ -1269,11 +1269,15 @@
         }
 
         async function playSample(type, btnElement) {
+            console.log('playSample called with type:', type);
+            
             if (!showApiKeyPrompt(() => playSample(type, btnElement))) return;
 
             const originalIcon = btnElement.querySelector('.play-icon');
             const loader = btnElement.querySelector('.loader');
             const textSpan = btnElement.querySelector('.text');
+            
+            console.log('UI elements found:', { originalIcon: !!originalIcon, loader: !!loader, textSpan: !!textSpan });
             
             if(originalIcon) originalIcon.classList.add('hidden');
             if(loader) loader.classList.remove('hidden');
@@ -1289,12 +1293,18 @@
             else if (type === 'shaonian') text = "别离我太近，我怕控制不住。";
             else if (type === 'dashu') text = "把手给我，我不急，等你准备好。";
 
+            console.log('Sample text:', text);
+            
             const voiceName = VOICE_MAP[type];
+            console.log('Voice name:', voiceName);
             
             try {
                 // 首先尝试 Gemini TTS
                 const apiKey = getApiKey();
+                console.log('API Key available:', !!apiKey);
+                
                 if (apiKey) {
+                    console.log('Attempting AI voice synthesis...');
                     const pcmData = await generateSpeech(text, voiceName);
                     if (pcmData) {
                         const audioUrl = pcmToWav(pcmData);
@@ -1304,6 +1314,7 @@
                         
                         // 成功播放 AI 语音
                         if(textSpan) textSpan.innerText = "AI 语音";
+                        console.log('AI voice playback successful');
                         return;
                     }
                 }
@@ -1313,8 +1324,10 @@
             
             // 降级到浏览器语音
             try {
+                console.log('Attempting browser speech synthesis...');
                 fallbackSpeech(text, type);
                 if(textSpan) textSpan.innerText = "浏览器语音";
+                console.log('Browser speech synthesis successful');
             } catch (e) {
                 console.error("语音播放完全失败:", e);
                 alert("语音播放失败，请检查浏览器设置");
