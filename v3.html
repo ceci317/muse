@@ -1269,6 +1269,8 @@
         }
 
         async function playSample(type, btnElement) {
+            if (!showApiKeyPrompt(() => playSample(type, btnElement))) return;
+
             const originalIcon = btnElement.querySelector('.play-icon');
             const loader = btnElement.querySelector('.loader');
             const textSpan = btnElement.querySelector('.text');
