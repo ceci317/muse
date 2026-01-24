@@ -1,0 +1,1792 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Muse | 她的情欲画廊</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    <!-- 引入 Markdown 解析库 -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        muse: {
+                            dark: '#0c0a09',
+                            panel: '#1c1917',
+                            accent: '#e7e5e4',
+                            rose: '#9f1239',
+                            gold: '#d6d3d1',
+                            purple: '#4c1d95',
+                            teal: '#115e59',
+                            amber: '#78350f',
+                        }
+                    },
+                    fontFamily: {
+                        serif: ['"Playfair Display"', 'serif'],
+                        sans: ['"Lato"', 'sans-serif'],
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'float': 'float 6s ease-in-out infinite',
+                        'shimmer': 'shimmer 2s linear infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        },
+                        shimmer: {
+                            '0%': { backgroundPosition: '-1000px 0' },
+                            '100%': { backgroundPosition: '1000px 0' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); opacity: 0.5; }
+            100% { transform: scale(1.3); opacity: 0; }
+        }
+        .playing-animation::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: rgba(159, 18, 57, 0.3);
+            border-radius: 50%;
+            z-index: -1;
+            animation: pulse-ring 2s infinite;
+        }
+        .prose p { margin-bottom: 0.8em; line-height: 1.6; }
+        .prose strong { color: #d6d3d1; font-weight: normal; }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .fade-in { animation: fadeIn 0.5s ease-out; }
+
+        /* 隐藏原生的 audio 控件，我们使用自定义 UI */
+        audio { display: none; }
+
+        /* 加载动画 */
+        .loader {
+            border: 2px solid rgba(255,255,255,0.1);
+            border-left-color: #9f1239;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Oracle Card Effect */
+        .oracle-card-bg {
+            background: linear-gradient(135deg, #1c1917 0%, #0c0a09 100%);
+            box-shadow: 0 0 15px rgba(214, 211, 209, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-muse-dark text-muse-accent font-sans antialiased selection:bg-muse-rose selection:text-white pb-32">
+
+    <!-- 0. 准入测试模态框 (The Gate) -->
+    <div id="gate-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black/95 backdrop-blur-sm"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="bg-muse-panel border border-stone-800 rounded-lg max-w-2xl w-full p-8 md:p-12 fade-in">
+                <h2 class="font-serif text-3xl text-muse-gold mb-2 text-center">The Gate</h2>
+                <p class="text-center text-stone-400 text-sm mb-8">回答三个问题，找到你的共鸣</p>
+                
+                <div id="gate-questions" class="space-y-6">
+                    <!-- 问题会动态生成 -->
+                </div>
+                
+                <div id="gate-result" class="hidden text-center">
+                    <p class="font-serif text-xl text-muse-gold mb-4" id="gate-result-text"></p>
+                    <button onclick="proceedToMasquerade()" class="bg-muse-rose hover:bg-muse-rose/80 text-white px-8 py-3 rounded-full transition">
+                        继续
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 0.1 身份生成模态框 (The Masquerade) -->
+    <div id="masquerade-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black/95 backdrop-blur-sm"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="bg-muse-panel border border-muse-rose/30 rounded-lg max-w-md w-full p-12 text-center fade-in">
+                <div class="mb-6">
+                    <div class="w-24 h-24 mx-auto mb-4 rounded-full bg-gradient-to-br from-muse-rose/20 to-muse-gold/20 flex items-center justify-center border-2 border-muse-rose/50">
+                        <span class="text-4xl font-serif text-muse-gold" id="persona-symbol">✨</span>
+                    </div>
+                    <h2 class="font-serif text-2xl text-muse-gold mb-2">Welcome</h2>
+                    <p class="text-3xl font-serif text-muse-rose mb-2" id="persona-name"></p>
+                    <p class="text-sm text-stone-400">这是你在 Muse 的身份</p>
+                </div>
+                <!-- 注意：这里的 enterGallery 会触发初始音效 -->
+                <button onclick="enterGallery()" class="bg-muse-rose hover:bg-muse-rose/80 text-white px-8 py-3 rounded-full transition shadow-[0_0_20px_rgba(159,18,57,0.5)] hover:shadow-[0_0_30px_rgba(159,18,57,0.7)]">
+                    进入画廊
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 1. 顶部导航 -->
+    <nav class="fixed top-0 w-full z-40 transition-all duration-300 bg-gradient-to-b from-muse-dark via-muse-dark/90 to-transparent backdrop-blur-[2px] pt-6 pb-12 px-6">
+        <div class="max-w-screen-xl mx-auto flex justify-between items-end">
+            <div>
+                <h1 class="text-3xl font-serif tracking-[0.2em] text-muse-gold">MUSE</h1>
+                <p class="text-xs text-stone-500 tracking-widest mt-1 uppercase">Your Narrative. Your Pleasure.</p>
+            </div>
+            <div class="hidden md:flex gap-6 text-xs tracking-widest text-stone-500">
+                <span class="hover:text-muse-gold cursor-pointer transition border-b border-transparent hover:border-muse-gold" onclick="filterContent('all')">ALL</span>
+                <span class="hover:text-muse-gold cursor-pointer transition border-b border-transparent hover:border-muse-gold" onclick="openSanctuary()">SANCTUARY</span>
+                <span class="hover:text-muse-gold cursor-pointer transition border-b border-transparent hover:border-muse-gold" onclick="openCompanion()">COMPANION</span>
+                <!-- New Oracle Link -->
+                <span class="hover:text-muse-gold text-muse-rose cursor-pointer transition border-b border-transparent hover:border-muse-gold flex items-center gap-1" onclick="openOracle()">
+                    <span>✨</span> ORACLE
+                </span>
+            </div>
+            <div class="flex gap-3">
+                 <!-- 背景音乐控制按钮 -->
+                <button onclick="toggleBackgroundMusic()" id="bgm-toggle" class="text-xs border border-stone-600 px-4 py-2 rounded-full hover:bg-stone-800 hover:border-stone-400 transition duration-500 flex items-center gap-1">
+                     <span class="w-2 h-2 rounded-full bg-stone-500" id="bgm-indicator"></span>
+                     <span id="bgm-text">BGM</span>
+                </button>
+                 <!-- 突出显示声线设置入口 -->
+                <button onclick="openVoiceSettings()" class="text-xs border border-muse-rose/50 text-muse-rose px-4 py-2 rounded-full hover:bg-muse-rose hover:text-white transition duration-500 flex items-center gap-1">
+                     <span class="w-2 h-2 rounded-full bg-muse-rose animate-pulse"></span>
+                     VOICE
+                </button>
+                <button onclick="openSpectrumSettings()" class="hidden md:block text-xs border border-stone-600 px-4 py-2 rounded-full hover:bg-stone-800 hover:border-stone-400 transition duration-500">
+                    SPECTRUM
+                </button>
+                <button onclick="openApiKeySettings()" class="text-xs border border-stone-600 px-4 py-2 rounded-full hover:bg-stone-800 hover:border-stone-400 transition duration-500" title="配置 API Key">
+                    API KEY
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 2. 主要内容区 -->
+    <main id="main-gallery" class="container mx-auto px-4 pt-32 max-w-4xl">
+        
+        <div class="text-center mb-12 opacity-80">
+            <p class="font-serif italic text-xl text-stone-400">"戴上耳机，闭上眼睛，<br>或者是看着光影流动。"</p>
+        </div>
+
+        <div id="gallery-grid" class="columns-2 md:columns-3 gap-4 space-y-4">
+
+            <!-- 1. 视觉卡片：光影的抚摸 -->
+            <div class="break-inside-avoid relative group rounded-lg overflow-hidden cursor-pointer" data-tags="all,demisexual">
+                <!-- ID for gender swap -->
+                <img id="img-sensual-light" src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=600&auto=format&fit=crop" alt="Sensual Light" class="w-full h-auto object-cover grayscale brightness-75 group-hover:grayscale-0 group-hover:brightness-100 transition duration-1000 ease-in-out">
+                <div class="absolute bottom-0 left-0 right-0 w-full p-4 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition duration-500 z-10 pointer-events-none">
+                    <p class="font-serif text-sm italic text-white">光影的抚摸</p>
+                </div>
+            </div>
+
+            <!-- 2. 音频卡片：雨天的书房 -->
+            <div class="break-inside-avoid relative rounded-lg overflow-hidden bg-muse-panel group cursor-pointer" onclick="togglePlay(this)" data-tags="all,demisexual">
+                <div class="relative">
+                    <img id="img-rainy-study" src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=600&auto=format&fit=crop" class="w-full h-64 object-cover opacity-60 group-hover:opacity-40 transition duration-700">
+                    <div class="absolute inset-0 flex items-center justify-center">
+                        <div class="play-btn w-12 h-12 rounded-full border border-white/30 flex items-center justify-center backdrop-blur-sm transition duration-300 group-hover:bg-white/10 group-hover:scale-110">
+                            <svg class="w-5 h-5 text-white ml-1 play-icon" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                            <svg class="w-5 h-5 text-white hidden pause-icon" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-4">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-[10px] tracking-widest text-stone-500 uppercase">Audio · 3:20</span>
+                        <span class="text-[10px] text-muse-rose">ASMR</span>
+                    </div>
+                    <h3 class="font-serif text-lg leading-tight text-muse-gold">雨天的书房与低语</h3>
+                </div>
+                <audio src="https://actions.google.com/sounds/v1/weather/rain_heavy_loud.ogg" loop id="bgm-rain"></audio> 
+            </div>
+
+            <!-- 3. 互动故事：私人电梯 -->
+            <div class="break-inside-avoid bg-stone-900 rounded-lg overflow-hidden border border-stone-800 hover:border-muse-rose/30 transition duration-500 cursor-pointer group" onclick="openStoryModal('elevator')" data-tags="all">
+                <div class="relative h-48 overflow-hidden">
+                    <img id="img-elevator" src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=600&auto=format&fit=crop" class="w-full h-full object-cover opacity-80 group-hover:scale-105 transition duration-1000 grayscale group-hover:grayscale-0">
+                    <div class="absolute inset-0 bg-gradient-to-t from-stone-900 to-transparent"></div>
+                    <span class="absolute top-3 right-3 text-[10px] bg-black/50 backdrop-blur text-muse-rose tracking-widest border border-muse-rose/50 px-2 py-0.5 rounded-full flex items-center">
+                        <span class="mr-1">✨</span> INTERACTIVE
+                    </span>
+                </div>
+                <div class="p-5 relative">
+                    <h3 class="font-serif text-xl mb-1 text-stone-200 group-hover:text-muse-rose transition">私人电梯</h3>
+                    <p class="text-xs text-stone-400 leading-relaxed line-clamp-2 mb-3 gender-text-swap">
+                        电梯故障停在了22层。灯光闪烁，只有你和他两个人...
+                    </p>
+                    <div class="flex items-center text-xs text-stone-500 group-hover:text-stone-300 transition">
+                        <span>Continue Story</span>
+                        <svg class="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. AI 剧本生成器 -->
+            <div class="break-inside-avoid relative rounded-lg border border-stone-800 overflow-hidden flex flex-col group min-h-[240px]" data-tags="all">
+                <div class="absolute inset-0">
+                    <img src="https://images.unsplash.com/photo-1581833971358-2c8b550f87b3?q=80&w=600&auto=format&fit=crop" alt="Abstract Ink" class="w-full h-full object-cover opacity-30 grayscale transition duration-1000 group-hover:opacity-50 group-hover:grayscale-0">
+                    <div class="absolute inset-0 bg-gradient-to-t from-stone-900 via-stone-900/90 to-stone-900/40"></div>
+                </div>
+                <div class="relative p-5 flex-1 flex flex-col justify-between">
+                    <div>
+                        <span class="text-[10px] text-muse-rose tracking-widest border border-muse-rose/50 px-2 py-0.5 rounded-full flex items-center w-fit backdrop-blur-sm">
+                            <span class="mr-1">✨</span> AI SCRIPTER
+                        </span>
+                        <h3 class="font-serif text-xl mt-3 text-stone-200">幻想剧本</h3>
+                        <p class="text-xs text-stone-400 mt-2">输入关键词，生成你的专属独白。</p>
+                    </div>
+                    
+                    <div class="space-y-3 mt-4">
+                        <input type="text" id="script-prompt" placeholder="例如：温柔的吸血鬼..." class="w-full bg-black/40 border border-stone-700 rounded p-2 text-sm focus:border-muse-rose focus:outline-none text-stone-300 placeholder-stone-500 backdrop-blur-sm transition focus:bg-black/60">
+                        <button onclick="generateScript()" id="script-btn" class="w-full bg-stone-700/80 hover:bg-muse-rose text-white text-xs py-2 rounded transition tracking-widest backdrop-blur-sm border border-stone-600 hover:border-muse-rose">
+                            生成剧本
+                        </button>
+                    </div>
+                </div>
+                <div id="script-result" class="relative hidden p-5 bg-black/40 text-xs text-stone-300 font-serif leading-relaxed border-t border-stone-800 min-h-[80px] prose backdrop-blur-md">
+                    <button onclick="speakScript()" id="speak-btn" class="hidden absolute top-2 right-2 text-muse-rose hover:text-muse-rose/80 text-xs flex items-center gap-2">
+                        <span>🔊 朗读</span>
+                        <span class="loader hidden" id="speak-loader"></span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 5. 视觉卡片：脊背与纹理 -->
+            <div class="break-inside-avoid relative group rounded-lg overflow-hidden cursor-pointer" data-tags="all,gl">
+                <img id="img-skin" src="https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?q=80&w=600&auto=format&fit=crop" alt="Skin Texture" class="w-full h-auto object-cover grayscale brightness-75 group-hover:grayscale-0 group-hover:brightness-90 transition duration-700">
+                <div class="absolute bottom-0 left-0 right-0 w-full p-4 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition duration-500 z-10 pointer-events-none">
+                    <p class="font-serif text-sm italic text-white">起伏的线条</p>
+                </div>
+            </div>
+
+            <!-- 6. 音频卡片：今晚不想睡 -->
+            <div class="break-inside-avoid relative rounded-lg overflow-hidden bg-muse-panel group cursor-pointer" onclick="togglePlay(this)" data-tags="all,femdom">
+                <div class="relative">
+                    <img id="img-night" src="https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=600&auto=format&fit=crop" alt="Ambient Mood" class="w-full h-48 object-cover opacity-70 group-hover:opacity-50 transition duration-700 grayscale group-hover:grayscale-0">
+                    <div class="absolute inset-0 flex items-center justify-center">
+                        <div class="play-btn w-12 h-12 rounded-full border border-white/30 flex items-center justify-center backdrop-blur-sm transition duration-300 group-hover:bg-white/10 group-hover:scale-110">
+                            <svg class="w-5 h-5 text-white ml-1 play-icon" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                            <svg class="w-5 h-5 text-white hidden pause-icon" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-4">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-[10px] tracking-widest text-stone-500 uppercase">Roleplay · 5:10</span>
+                    </div>
+                    <h3 class="font-serif text-lg leading-tight text-muse-gold">如果你今晚不想睡...</h3>
+                </div>
+                <!-- 替换为 Google Sounds 稳定链接 (蟋蟀声模拟夜晚) -->
+                <audio src="https://actions.google.com/sounds/v1/nature/crickets_chirping.ogg" loop></audio> 
+            </div>
+
+            <!-- 7. 文本卡片：引言 -->
+            <div class="break-inside-avoid bg-stone-900 p-6 rounded-lg text-center border border-stone-800 flex flex-col justify-center items-center min-h-[160px]" data-tags="all,demisexual">
+                <p class="font-serif italic text-stone-400 text-lg leading-relaxed">
+                    "身体是诚实的，<br>但想象力才是高潮的起源。"
+                </p>
+                <div class="w-8 h-[1px] bg-stone-700 mt-4"></div>
+            </div>
+
+            <!-- 8. 视觉：浴室水汽 -->
+            <div class="break-inside-avoid relative group rounded-lg overflow-hidden cursor-pointer" data-tags="all,gl">
+                <img id="img-steam" src="https://images.unsplash.com/photo-1566492031773-4f4e44671d66?q=80&w=600&auto=format&fit=crop" alt="Steam" class="w-full h-64 object-cover grayscale brightness-50 group-hover:grayscale-0 transition duration-1000">
+                <div class="absolute bottom-0 left-0 right-0 w-full p-4 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition duration-500 z-10 pointer-events-none">
+                    <p class="font-serif text-sm italic text-white">水汽与镜面</p>
+                </div>
+            </div>
+
+             <!-- 9. 音频：晨间咖啡 -->
+            <div class="break-inside-avoid relative rounded-lg overflow-hidden bg-muse-panel group cursor-pointer" onclick="togglePlay(this)" data-tags="all">
+                <div class="relative">
+                    <img src="https://images.unsplash.com/photo-1507591064344-4c6ce005b128?q=80&w=600&auto=format&fit=crop" class="w-full h-40 object-cover opacity-60 group-hover:opacity-40 transition duration-700">
+                    <div class="absolute inset-0 flex items-center justify-center">
+                        <div class="play-btn w-10 h-10 rounded-full border border-white/30 flex items-center justify-center backdrop-blur-sm transition duration-300 group-hover:bg-white/10">
+                            <svg class="w-4 h-4 text-white ml-1 play-icon" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                            <svg class="w-4 h-4 text-white hidden pause-icon" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-4">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-[10px] tracking-widest text-stone-500 uppercase">Morning · 2:15</span>
+                    </div>
+                    <h3 class="font-serif text-base leading-tight text-muse-gold">第一口热咖啡</h3>
+                </div>
+                <!-- 替换为 Google Sounds 稳定链接 (咖啡厅环境音) -->
+                <audio src="https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg" loop></audio>
+            </div>
+
+            <!-- 10. 文本：微醺 -->
+            <div class="break-inside-avoid bg-stone-950 p-6 rounded-lg border border-stone-800 hover:border-muse-rose/20 transition duration-500 group" data-tags="all">
+                <span class="text-[10px] text-stone-600 uppercase tracking-widest">Story Snippet</span>
+                <p class="font-serif text-stone-300 mt-3 text-sm leading-7 gender-text-swap">
+                    第二杯红酒下肚后，世界变得柔软了。他没有看你，只是手指轻轻敲打着高脚杯的杯壁。那声音像心跳一样，一下，两下。
+                </p>
+                <div class="mt-4 text-[10px] text-muse-rose opacity-0 group-hover:opacity-100 transition">READ MORE</div>
+            </div>
+
+            <!-- 11. 视觉：手部特写与触碰 -->
+            <div class="break-inside-avoid relative group rounded-lg overflow-hidden cursor-pointer" data-tags="all,gl">
+                <img id="img-hands" src="https://images.unsplash.com/photo-1594736797933-d0401ba2fe65?q=80&w=600&auto=format&fit=crop" class="w-full h-auto object-cover grayscale brightness-75 group-hover:grayscale-0 group-hover:brightness-90 transition duration-700">
+                 <div class="absolute bottom-0 left-0 right-0 w-full p-4 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition duration-500 z-10 pointer-events-none">
+                    <p class="font-serif text-sm italic text-white">指尖的试探</p>
+                </div>
+            </div>
+
+            <!-- 12. 互动故事：图书馆 -->
+            <div class="break-inside-avoid bg-stone-900 rounded-lg overflow-hidden border border-stone-800 hover:border-muse-rose/30 transition duration-500 cursor-pointer group" onclick="openStoryModal('library')" data-tags="all,gl">
+                <div class="relative h-40 overflow-hidden">
+                    <img id="img-library" src="https://images.unsplash.com/photo-1507591064344-4c6ce005b128?q=80&w=600&auto=format&fit=crop" class="w-full h-full object-cover opacity-60 group-hover:scale-105 transition duration-1000 grayscale">
+                    <div class="absolute inset-0 bg-gradient-to-t from-stone-900 to-transparent"></div>
+                    <span class="absolute top-3 right-3 text-[10px] bg-black/50 backdrop-blur text-muse-rose tracking-widest border border-muse-rose/50 px-2 py-0.5 rounded-full flex items-center">
+                        <span class="mr-1">✨</span> INTERACTIVE
+                    </span>
+                </div>
+                <div class="p-4 relative">
+                    <h3 class="font-serif text-lg mb-1 text-stone-200 group-hover:text-muse-rose transition">禁忌图书馆</h3>
+                    <p class="text-xs text-stone-400 leading-relaxed line-clamp-2">在这排书架的最深处，没有人会来...</p>
+                </div>
+            </div>
+
+            <!-- ========== 新增扩展内容 (瀑布流延续) ========== -->
+
+            <!-- 13. 视觉：情侣亲密剪影 -->
+            <div class="break-inside-avoid relative group rounded-lg overflow-hidden cursor-pointer" data-tags="all">
+                <img id="img-couple" src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=600&auto=format&fit=crop" alt="Couple Silhouette" class="w-full h-[300px] object-cover grayscale brightness-50 group-hover:grayscale-0 group-hover:brightness-75 transition duration-1000">
+                <div class="absolute bottom-0 left-0 right-0 w-full p-4 bg-gradient-to-t from-black/90 to-transparent opacity-0 group-hover:opacity-100 transition duration-500 z-10 pointer-events-none">
+                    <p class="font-serif text-sm italic text-white">呼吸交缠</p>
+                </div>
+            </div>
+
+            <!-- 14. 音频：心跳与呼吸 -->
+            <div class="break-inside-avoid relative rounded-lg overflow-hidden bg-muse-panel group cursor-pointer" onclick="togglePlay(this)" data-tags="all">
+                <div class="relative">
+                    <div class="h-32 bg-stone-900 flex items-center justify-center group-hover:bg-stone-800 transition duration-500">
+                        <!-- 心电图效果 -->
+                         <div class="flex items-end gap-1 h-12">
+                            <div class="w-1 bg-muse-rose/50 h-4 wave-bar"></div>
+                            <div class="w-1 bg-muse-rose/50 h-8 wave-bar"></div>
+                            <div class="w-1 bg-muse-rose/80 h-10 wave-bar"></div>
+                            <div class="w-1 bg-muse-rose/50 h-6 wave-bar"></div>
+                            <div class="w-1 bg-muse-rose/30 h-3 wave-bar"></div>
+                        </div>
+                    </div>
+                    <div class="absolute inset-0 flex items-center justify-center">
+                        <div class="play-btn w-10 h-10 rounded-full border border-white/30 flex items-center justify-center backdrop-blur-sm transition duration-300 group-hover:bg-white/10">
+                            <svg class="w-4 h-4 text-white ml-1 play-icon" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                            <svg class="w-4 h-4 text-white hidden pause-icon" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-4 border-t border-stone-800">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-[10px] tracking-widest text-stone-500 uppercase">Soundscape · 1:05</span>
+                    </div>
+                    <h3 class="font-serif text-base leading-tight text-muse-gold">耳边的频率</h3>
+                    <p class="text-[10px] text-stone-500 mt-2">建议佩戴耳机</p>
+                </div>
+                <!-- 替换为 Google Sounds 稳定链接 (快速心跳) -->
+                <audio src="https://actions.google.com/sounds/v1/foley/heartbeat_fast.ogg" loop></audio>
+            </div>
+
+             <!-- 15. 视觉：身体线条 (动态) -->
+            <div class="break-inside-avoid relative group rounded-lg overflow-hidden cursor-pointer" data-tags="all,demisexual">
+                <img id="img-torso" src="https://images.unsplash.com/photo-1581833971358-2c8b550f87b3?q=80&w=600&auto=format&fit=crop" alt="Torso Shadow" class="w-full h-auto object-cover grayscale brightness-[0.6] group-hover:grayscale-0 group-hover:brightness-90 transition duration-1000">
+                <div class="absolute bottom-0 left-0 right-0 w-full p-4 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition duration-500 z-10 pointer-events-none">
+                    <p class="font-serif text-sm italic text-white">力量的轮廓</p>
+                </div>
+            </div>
+
+            <!-- 16. 互动故事：蒙眼 -->
+            <div class="break-inside-avoid bg-stone-900 rounded-lg overflow-hidden border border-stone-800 hover:border-muse-rose/30 transition duration-500 cursor-pointer group" onclick="openStoryModal('blindfold')" data-tags="all">
+                 <div class="relative h-44 overflow-hidden">
+                    <img id="img-blindfold" src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?q=80&w=600&auto=format&fit=crop" class="w-full h-full object-cover opacity-60 group-hover:scale-105 transition duration-1000 grayscale">
+                    <div class="absolute inset-0 bg-gradient-to-t from-stone-900 to-transparent"></div>
+                    <span class="absolute top-3 right-3 text-[10px] bg-black/50 backdrop-blur text-muse-rose tracking-widest border border-muse-rose/50 px-2 py-0.5 rounded-full flex items-center">
+                        <span class="mr-1">✨</span> INTERACTIVE
+                    </span>
+                </div>
+                <div class="p-5 relative">
+                    <h3 class="font-serif text-xl mb-1 text-stone-200 group-hover:text-muse-rose transition">Trust (信任)</h3>
+                    <p class="text-xs text-stone-400 leading-relaxed mb-3 gender-text-swap">"戴上它。" 他递给你一条丝绸领带，声音不容置疑...</p>
+                    <div class="flex items-center text-xs text-stone-500 group-hover:text-stone-300 transition">
+                        <span>Continue Story</span>
+                    </div>
+                </div>
+            </div>
+
+             <!-- 17. 文本：清晨 -->
+            <div class="break-inside-avoid bg-stone-950 p-6 rounded-lg border border-stone-800 hover:border-muse-rose/20 transition duration-500 group" data-tags="all">
+                <span class="text-[10px] text-stone-600 uppercase tracking-widest">Moment</span>
+                <p class="font-serif text-stone-300 mt-3 text-sm leading-7 gender-text-swap">
+                    醒来时，窗帘缝隙漏进一束光。被单上还残留着他的温度，以及淡淡的雪松味。
+                </p>
+            </div>
+
+             <!-- 18. 视觉：锁骨与颈部 -->
+            <div class="break-inside-avoid relative group rounded-lg overflow-hidden cursor-pointer" data-tags="all">
+                <img id="img-neck" src="https://images.unsplash.com/photo-1552374196-c4e7ffc6e126?q=80&w=600&auto=format&fit=crop" alt="Neck" class="w-full h-auto object-cover grayscale brightness-75 group-hover:grayscale-0 transition duration-700">
+                <div class="absolute bottom-0 left-0 right-0 w-full p-4 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition duration-500 z-10 pointer-events-none">
+                    <p class="font-serif text-sm italic text-white">脆弱与渴望</p>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="text-center mt-24 mb-20 opacity-50 hover:opacity-100 transition">
+            <span class="text-4xl block mb-2 text-stone-700">❦</span>
+            <p class="text-stone-600 text-xs tracking-widest">End of Gallery</p>
+        </div>
+    </main>
+
+    <!-- 3. Waitlist Footer -->
+    <footer id="join-section" class="fixed bottom-0 w-full z-40">
+        <div class="h-12 bg-gradient-to-t from-muse-dark to-transparent"></div>
+        <div class="bg-stone-900/90 backdrop-blur-md border-t border-stone-800 pb-8 pt-6 px-6 rounded-t-3xl shadow-2xl">
+            <div class="max-w-md mx-auto text-center">
+                <h2 class="font-serif text-xl text-muse-gold mb-1">Join the Private Circle</h2>
+                <p class="text-xs text-stone-400 mb-5 font-light">匿名社区 · 邀请制 · 仅限女性</p>
+                <form class="flex gap-2 relative" onsubmit="submitForm(event)">
+                    <input type="email" required placeholder="Enter your email for invite code..." 
+                           class="w-full bg-stone-950 border border-stone-700 text-stone-300 text-sm rounded-lg px-4 py-3 focus:outline-none focus:border-muse-rose focus:ring-1 focus:ring-muse-rose transition placeholder-stone-600">
+                    <button type="submit" 
+                            class="absolute right-1 top-1 bottom-1 bg-stone-800 hover:bg-muse-rose text-stone-300 hover:text-white px-4 rounded-md text-xs tracking-widest transition duration-300 font-bold">
+                        JOIN
+                    </button>
+                </form>
+                <p id="success-msg" class="hidden text-xs text-green-400 mt-2 tracking-wide">邀请已发送，请留意你的收件箱。</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- 4. 互动故事 Modal (AI Overlay) -->
+    <div id="story-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black/90 backdrop-blur-sm transition-opacity" onclick="closeStoryModal()"></div>
+        <div class="absolute inset-x-0 bottom-0 md:top-20 md:bottom-20 md:inset-x-auto md:left-1/2 md:-translate-x-1/2 md:w-[600px] bg-muse-panel md:rounded-lg shadow-2xl flex flex-col border border-stone-800 max-h-[90vh]">
+            <div class="p-6 border-b border-stone-800 flex justify-between items-center bg-gradient-to-r from-stone-900 to-muse-panel">
+                <div>
+                    <span class="text-[10px] text-muse-rose tracking-widest uppercase">Muse AI Storyteller</span>
+                    <h3 class="text-2xl font-serif text-muse-gold mt-1" id="story-title">私人电梯</h3>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="toggleStoryVoice()" id="voice-toggle-btn" class="text-stone-500 hover:text-muse-rose p-2" title="语音开关">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg>
+                    </button>
+                    <button onclick="closeStoryModal()" class="text-stone-500 hover:text-white">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+            </div>
+            <div id="story-content" class="flex-1 overflow-y-auto p-6 space-y-6 text-stone-300 font-serif leading-relaxed text-lg no-scrollbar">
+                <!-- 内容会动态生成 -->
+            </div>
+            <div class="p-4 bg-stone-900 border-t border-stone-800">
+                <div class="relative">
+                    <input type="text" id="story-input" placeholder="输入你的动作或回应 (例如: 我向他迈近一步...)" 
+                           class="w-full bg-black/50 border border-stone-700 rounded-lg pl-4 pr-12 py-3 text-sm focus:border-muse-rose focus:ring-1 focus:ring-muse-rose focus:outline-none text-stone-200"
+                           onkeypress="if(event.key==='Enter') continueStory()">
+                    <button onclick="continueStory()" id="story-send-btn" class="absolute right-2 top-2 p-1.5 bg-stone-700 rounded hover:bg-muse-rose text-white transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7"></path></svg>
+                    </button>
+                </div>
+                <p class="text-[10px] text-stone-600 mt-2 text-center">AI generated content. Explore responsibly.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 7. 全新声线设置模态框 (UI升级) -->
+    <div id="voice-settings-modal" class="fixed inset-0 z-[60] hidden">
+        <div class="absolute inset-0 bg-black/95 backdrop-blur-md" onclick="closeVoiceSettings()"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="bg-muse-panel border border-stone-800 rounded-lg max-w-2xl w-full p-8 fade-in relative overflow-hidden">
+                 <!-- 装饰背景 -->
+                <div class="absolute -top-10 -right-10 w-40 h-40 bg-muse-rose/10 rounded-full blur-3xl"></div>
+                
+                <div class="flex justify-between items-center mb-8 relative z-10">
+                    <div>
+                        <h3 class="font-serif text-2xl text-muse-gold">Choose Your Voice</h3>
+                        <p class="text-xs text-stone-500 mt-1">选择最让你心动的声音陪伴</p>
+                    </div>
+                    <button onclick="closeVoiceSettings()" class="text-stone-500 hover:text-white">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+
+                <!-- 声线卡片网格 -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 relative z-10">
+                    
+                    <!-- 卡片 1: 低沉御少音 -->
+                    <div class="voice-card cursor-pointer border border-stone-800 rounded-lg p-4 hover:border-muse-purple transition-all duration-300 relative group overflow-hidden" onclick="selectVoice('yushao')">
+                        <div class="absolute inset-0 bg-gradient-to-br from-muse-purple/20 to-transparent opacity-0 group-hover:opacity-100 transition duration-500"></div>
+                        <input type="radio" name="voice-type" value="yushao" class="hidden">
+                        
+                        <div class="flex justify-between items-start mb-3 relative">
+                            <span class="text-3xl">🍷</span>
+                            <div class="w-4 h-4 rounded-full border border-stone-600 group-hover:border-muse-purple flex items-center justify-center selection-indicator">
+                                <div class="w-2 h-2 rounded-full bg-muse-purple hidden"></div>
+                            </div>
+                        </div>
+                        
+                        <h4 class="text-stone-200 font-serif text-lg mb-1 group-hover:text-muse-purple transition">低沉御少音</h4>
+                        <div class="flex gap-1 mb-3">
+                            <span class="text-[10px] px-1.5 py-0.5 bg-stone-800 rounded text-stone-400">磁性</span>
+                            <span class="text-[10px] px-1.5 py-0.5 bg-stone-800 rounded text-stone-400">知性</span>
+                        </div>
+                        <p class="text-xs text-stone-500 leading-relaxed italic">"过来，不用说话，听我就好。"</p>
+                        
+                        <button onclick="event.stopPropagation(); playSample('yushao', this)" class="mt-4 w-full py-1.5 text-xs border border-stone-700 rounded text-stone-400 hover:text-white hover:bg-stone-800 transition flex items-center justify-center gap-2 sample-btn">
+                             <svg class="w-3 h-3 play-icon" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> 
+                             <span class="loader hidden w-3 h-3 border-2"></span>
+                             <span class="text">试听</span>
+                        </button>
+                    </div>
+
+                    <!-- 卡片 2: 清冷少年音 -->
+                    <div class="voice-card cursor-pointer border border-stone-800 rounded-lg p-4 hover:border-muse-teal transition-all duration-300 relative group overflow-hidden" onclick="selectVoice('shaonian')">
+                         <div class="absolute inset-0 bg-gradient-to-br from-muse-teal/20 to-transparent opacity-0 group-hover:opacity-100 transition duration-500"></div>
+                        <input type="radio" name="voice-type" value="shaonian" class="hidden">
+                        
+                        <div class="flex justify-between items-start mb-3 relative">
+                            <span class="text-3xl">❄️</span>
+                             <div class="w-4 h-4 rounded-full border border-stone-600 group-hover:border-muse-teal flex items-center justify-center selection-indicator">
+                                <div class="w-2 h-2 rounded-full bg-muse-teal hidden"></div>
+                            </div>
+                        </div>
+                        
+                        <h4 class="text-stone-200 font-serif text-lg mb-1 group-hover:text-muse-teal transition">清冷少年音</h4>
+                         <div class="flex gap-1 mb-3">
+                            <span class="text-[10px] px-1.5 py-0.5 bg-stone-800 rounded text-stone-400">禁欲</span>
+                            <span class="text-[10px] px-1.5 py-0.5 bg-stone-800 rounded text-stone-400">清脆</span>
+                        </div>
+                        <p class="text-xs text-stone-500 leading-relaxed italic">"别离我太近，我怕控制不住。"</p>
+
+                         <button onclick="event.stopPropagation(); playSample('shaonian', this)" class="mt-4 w-full py-1.5 text-xs border border-stone-700 rounded text-stone-400 hover:text-white hover:bg-stone-800 transition flex items-center justify-center gap-2 sample-btn">
+                             <svg class="w-3 h-3 play-icon" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                             <span class="loader hidden w-3 h-3 border-2"></span>
+                             <span class="text">试听</span>
+                        </button>
+                    </div>
+
+                    <!-- 卡片 3: 温柔大叔音 -->
+                    <div class="voice-card cursor-pointer border border-stone-800 rounded-lg p-4 hover:border-muse-amber transition-all duration-300 relative group overflow-hidden" onclick="selectVoice('dashu')">
+                         <div class="absolute inset-0 bg-gradient-to-br from-muse-amber/20 to-transparent opacity-0 group-hover:opacity-100 transition duration-500"></div>
+                        <input type="radio" name="voice-type" value="dashu" class="hidden">
+                        
+                        <div class="flex justify-between items-start mb-3 relative">
+                            <span class="text-3xl">🥃</span>
+                             <div class="w-4 h-4 rounded-full border border-stone-600 group-hover:border-muse-amber flex items-center justify-center selection-indicator">
+                                <div class="w-2 h-2 rounded-full bg-muse-amber hidden"></div>
+                            </div>
+                        </div>
+                        
+                        <h4 class="text-stone-200 font-serif text-lg mb-1 group-hover:text-muse-amber transition">温柔大叔音</h4>
+                         <div class="flex gap-1 mb-3">
+                            <span class="text-[10px] px-1.5 py-0.5 bg-stone-800 rounded text-stone-400">包容</span>
+                            <span class="text-[10px] px-1.5 py-0.5 bg-stone-800 rounded text-stone-400">低沉</span>
+                        </div>
+                        <p class="text-xs text-stone-500 leading-relaxed italic">"把手给我，我不急，等你准备好。"</p>
+
+                         <button onclick="event.stopPropagation(); playSample('dashu', this)" class="mt-4 w-full py-1.5 text-xs border border-stone-700 rounded text-stone-400 hover:text-white hover:bg-stone-800 transition flex items-center justify-center gap-2 sample-btn">
+                             <svg class="w-3 h-3 play-icon" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> 
+                             <span class="loader hidden w-3 h-3 border-2"></span>
+                             <span class="text">试听</span>
+                        </button>
+                    </div>
+
+                </div>
+
+                <button onclick="closeVoiceSettings()" class="w-full bg-muse-rose hover:bg-muse-rose/80 text-white py-3 rounded-lg transition relative z-10 font-bold tracking-widest text-xs">
+                    CONFIRM SELECTION
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 8. Oracle 模态框 (新增功能) -->
+    <div id="oracle-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black/95 backdrop-blur-md" onclick="closeOracle()"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="bg-muse-panel border border-stone-800 rounded-lg max-w-lg w-full p-8 fade-in relative flex flex-col items-center text-center">
+                <!-- 装饰背景 -->
+                <div class="absolute inset-0 bg-gradient-to-t from-muse-rose/5 to-transparent pointer-events-none rounded-lg"></div>
+                
+                <!-- 关闭按钮 -->
+                <button onclick="closeOracle()" class="absolute top-4 right-4 text-stone-500 hover:text-white z-20">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+                
+                <div class="mb-6">
+                    <span class="text-5xl animate-pulse">🔮</span>
+                    <h3 class="font-serif text-3xl text-muse-gold mt-4">The Muse Oracle</h3>
+                    <p class="text-xs text-stone-500 mt-2 tracking-widest uppercase">Reveal Your Hidden Desires</p>
+                </div>
+
+                <!-- 初始状态：提问 -->
+                <div id="oracle-input-view" class="w-full space-y-6">
+                    <p class="text-stone-400 text-sm italic font-serif">"你为何而来？是寻找答案，还是寻找借口？"</p>
+                    <input type="text" id="oracle-query" placeholder="输入你的困惑 (或留空以获取随机指引)..." 
+                           class="w-full bg-black/40 border border-stone-700 rounded-lg p-4 text-center text-stone-300 focus:border-muse-rose focus:outline-none focus:ring-1 focus:ring-muse-rose placeholder-stone-600 transition">
+                    <button onclick="askOracle()" class="w-full bg-gradient-to-r from-stone-800 to-stone-700 hover:from-muse-rose hover:to-muse-rose/80 text-white py-3 rounded-lg transition shadow-lg border border-stone-600 hover:border-muse-rose relative overflow-hidden group">
+                        <span class="relative z-10 tracking-widest text-xs font-bold">REVEAL THE CARD</span>
+                        <div class="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition duration-500"></div>
+                    </button>
+                </div>
+
+                <!-- 结果状态：卡牌展示 -->
+                <div id="oracle-result-view" class="hidden w-full flex-col items-center">
+                    <div class="w-48 h-72 oracle-card-bg rounded-lg border border-muse-gold/30 flex flex-col items-center justify-center p-6 mb-6 relative overflow-hidden group animate-float">
+                        <div class="absolute inset-0 bg-gradient-to-b from-transparent to-black/80"></div>
+                        <span class="text-6xl mb-4 relative z-10" id="card-icon">🎴</span>
+                        <h4 class="font-serif text-xl text-muse-gold relative z-10 border-b border-muse-gold/30 pb-2 mb-2" id="card-title">Unknown</h4>
+                        <p class="text-[10px] text-stone-400 uppercase tracking-widest relative z-10">Muse Arcana</p>
+                    </div>
+                    <div class="prose prose-invert prose-sm max-w-none text-stone-300 font-serif leading-relaxed" id="card-meaning">
+                        <!-- 解读内容 -->
+                    </div>
+                    <button onclick="resetOracle()" class="mt-8 text-xs text-stone-500 hover:text-muse-rose transition border-b border-transparent hover:border-muse-rose pb-0.5">
+                        Ask Another Question
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 9. API Key 配置模态框 -->
+    <div id="apikey-modal" class="fixed inset-0 z-[60] hidden">
+        <div class="absolute inset-0 bg-black/95 backdrop-blur-sm"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="bg-muse-panel border border-muse-rose/30 rounded-lg max-w-lg w-full p-8 fade-in">
+                <h3 class="font-serif text-2xl text-muse-gold mb-2">配置 Gemini API Key</h3>
+                <p class="text-sm text-stone-400 mb-4">为了使用 AI 功能，请配置你的 Gemini API Key</p>
+                <div class="mb-4">
+                    <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-muse-rose hover:text-muse-rose/80 text-sm underline">
+                        点击这里获取 API Key →
+                    </a>
+                </div>
+                <div class="mb-6">
+                    <input type="password" id="apikey-input" placeholder="粘贴你的 Gemini API Key" 
+                           class="w-full bg-black/40 border border-stone-700 rounded-lg p-3 text-stone-300 focus:border-muse-rose focus:outline-none focus:ring-1 focus:ring-muse-rose placeholder-stone-600"
+                           onkeypress="if(event.key==='Enter') saveApiKey()">
+                    <p class="text-xs text-stone-500 mt-2">API Key 仅保存在本地浏览器，不会上传到服务器</p>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="saveApiKey()" class="flex-1 bg-muse-rose hover:bg-muse-rose/80 text-white py-3 rounded-lg transition">
+                        保存
+                    </button>
+                    <button onclick="skipApiKey()" class="flex-1 bg-stone-800 hover:bg-stone-700 text-stone-300 py-3 rounded-lg transition border border-stone-700">
+                        稍后配置
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 10. 多元欲望板块设置 (The Spectrum) -->
+    <div id="spectrum-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black/90 backdrop-blur-sm" onclick="closeSpectrumSettings()"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="bg-muse-panel border border-stone-800 rounded-lg max-w-md w-full p-8 fade-in">
+                <h3 class="font-serif text-2xl text-muse-gold mb-2">The Spectrum</h3>
+                <p class="text-sm text-stone-400 mb-6">定制你的感官偏好</p>
+                
+                <!-- 新增：性取向/对象偏好 -->
+                <div class="mb-6 pb-6 border-b border-stone-800">
+                    <p class="text-xs text-muse-rose tracking-widest uppercase mb-3">Attraction (我渴望...)</p>
+                    <div class="flex gap-4">
+                        <label class="flex items-center cursor-pointer group">
+                            <input type="radio" name="gender-pref" value="male" class="hidden peer" onchange="updateGenderPreference('male')">
+                            <div class="w-full bg-stone-800 peer-checked:bg-muse-rose/20 peer-checked:border-muse-rose border border-stone-700 rounded px-4 py-2 text-sm text-stone-400 peer-checked:text-muse-rose transition text-center hover:border-muse-rose/50">
+                                男性张力
+                            </div>
+                        </label>
+                        <label class="flex items-center cursor-pointer group">
+                            <input type="radio" name="gender-pref" value="female" class="hidden peer" onchange="updateGenderPreference('female')">
+                            <div class="w-full bg-stone-800 peer-checked:bg-muse-rose/20 peer-checked:border-muse-rose border border-stone-700 rounded px-4 py-2 text-sm text-stone-400 peer-checked:text-muse-rose transition text-center hover:border-muse-rose/50">
+                                女性柔美
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <p class="text-xs text-stone-500 tracking-widest uppercase mb-1">Theme (氛围)</p>
+                    <label class="flex items-center cursor-pointer">
+                        <input type="checkbox" value="gl" class="mr-3 w-5 h-5 text-muse-rose focus:ring-muse-rose" onchange="updateSpectrumFilter()">
+                        <span class="text-stone-300">GL / Lesbian (含蓄)</span>
+                    </label>
+                    <label class="flex items-center cursor-pointer">
+                        <input type="checkbox" value="femdom" class="mr-3 w-5 h-5 text-muse-rose focus:ring-muse-rose" onchange="updateSpectrumFilter()">
+                        <span class="text-stone-300">Femdom / Control (掌控)</span>
+                    </label>
+                    <label class="flex items-center cursor-pointer">
+                        <input type="checkbox" value="demisexual" class="mr-3 w-5 h-5 text-muse-rose focus:ring-muse-rose" onchange="updateSpectrumFilter()">
+                        <span class="text-stone-300">Demisexual (智性/情感)</span>
+                    </label>
+                </div>
+                <button onclick="closeSpectrumSettings()" class="mt-6 w-full bg-muse-rose hover:bg-muse-rose/80 text-white py-3 rounded-lg transition">
+                    应用设置
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 11. 树洞信箱模态框 (The Sanctuary) -->
+    <div id="sanctuary-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black/90 backdrop-blur-sm" onclick="closeSanctuary()"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4 overflow-y-auto">
+            <div class="bg-muse-panel border border-stone-800 rounded-lg max-w-2xl w-full my-8 fade-in">
+                <!-- 写信界面 -->
+                <div id="sanctuary-write" class="p-8">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="font-serif text-2xl text-muse-gold">The Sanctuary</h2>
+                        <button onclick="closeSanctuary()" class="text-stone-500 hover:text-white">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+                    <p class="text-sm text-stone-400 mb-6">写下你的心情，让它漂流到另一个人的信箱</p>
+                    <textarea id="sanctuary-text" placeholder="在这里写下你想说的话..." 
+                              class="w-full bg-black/40 border border-stone-700 rounded-lg p-4 text-stone-300 font-serif min-h-[300px] focus:border-muse-rose focus:outline-none resize-none placeholder-stone-600 leading-relaxed"></textarea>
+                    <div class="flex gap-3 mt-4">
+                        <button onclick="sendSanctuaryLetter()" class="flex-1 bg-muse-rose hover:bg-muse-rose/80 text-white py-3 rounded-lg transition">
+                            投递
+                        </button>
+                        <button onclick="pickSanctuaryLetter()" class="flex-1 bg-stone-800 hover:bg-stone-700 text-stone-300 py-3 rounded-lg transition border border-stone-700 group relative overflow-hidden">
+                             <span class="relative z-10 flex items-center justify-center gap-2">
+                                <span>✨</span> 拾取一封信 (Infinite)
+                             </span>
+                        </button>
+                    </div>
+                </div>
+                <!-- 读信界面 -->
+                <div id="sanctuary-read" class="hidden p-8">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="font-serif text-2xl text-muse-gold">一封信</h2>
+                        <button onclick="closeSanctuaryRead()" class="text-stone-500 hover:text-white">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+                    <div id="sanctuary-letter-content" class="bg-black/20 border border-stone-800 rounded-lg p-6 font-serif text-stone-300 leading-relaxed min-h-[200px] flex items-center justify-center">
+                        <!-- 信件内容 -->
+                    </div>
+                    <div class="flex gap-3 mt-6">
+                        <button onclick="replySanctuaryLetter()" class="flex-1 bg-stone-800 hover:bg-stone-700 text-stone-300 py-3 rounded-lg transition border border-stone-700">
+                            写回信
+                        </button>
+                        <button onclick="pickSanctuaryLetter()" class="flex-1 bg-muse-rose/20 hover:bg-muse-rose/30 text-muse-rose py-3 rounded-lg transition border border-muse-rose/50">
+                            下一封
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 12. AI 伴侣模态框 (The Companion) -->
+    <div id="companion-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black/90 backdrop-blur-sm" onclick="closeCompanion()"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="bg-muse-panel border border-stone-800 rounded-lg max-w-2xl w-full max-h-[90vh] flex flex-col fade-in">
+                <!-- 头部 -->
+                <div class="p-6 border-b border-stone-800 flex justify-between items-center">
+                    <div>
+                        <h2 class="font-serif text-2xl text-muse-gold">AI Companion</h2>
+                        <p class="text-xs text-stone-500 mt-1">你的专属伴侣</p>
+                    </div>
+                    <button onclick="closeCompanion()" class="text-stone-500 hover:text-white">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+                
+                <!-- 聊天区域 -->
+                <div id="companion-chat" class="flex-1 overflow-y-auto p-6 space-y-4 no-scrollbar">
+                    <!-- 聊天内容会动态生成 -->
+                </div>
+                
+                <!-- 输入区域 -->
+                <div class="p-4 border-t border-stone-800">
+                    <div class="relative">
+                        <input type="text" id="companion-input" placeholder="输入你想说的话..." 
+                               class="w-full bg-black/50 border border-stone-700 rounded-lg pl-4 pr-12 py-3 text-sm focus:border-muse-rose focus:ring-1 focus:ring-muse-rose focus:outline-none text-stone-200"
+                               onkeypress="if(event.key==='Enter') sendCompanionMessage()">
+                        <button onclick="sendCompanionMessage()" class="absolute right-2 top-2 p-1.5 bg-stone-700 rounded hover:bg-muse-rose text-white transition">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7"></path></svg>
+                        </button>
+                    </div>
+                    <p class="text-[10px] text-stone-600 mt-2 text-center">AI generated content. Explore responsibly.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========== API Key 管理 ==========
+        function getApiKey() {
+            return localStorage.getItem('muse_gemini_apikey') || 'AIzaSyDGh1m9jeEj-H1AmuJIGVk2TgwUlO-s3mY';
+        }
+
+        function saveApiKey() {
+            const input = document.getElementById('apikey-input');
+            const key = input.value.trim();
+            if (key) {
+                localStorage.setItem('muse_gemini_apikey', key);
+                document.getElementById('apikey-modal').classList.add('hidden');
+                if (window.pendingAiAction) {
+                    window.pendingAiAction();
+                    window.pendingAiAction = null;
+                }
+            } else {
+                alert('请输入有效的 API Key');
+            }
+        }
+
+        function skipApiKey() {
+            localStorage.setItem('muse_apikey_skipped', 'true');
+            document.getElementById('apikey-modal').classList.add('hidden');
+        }
+
+        function showApiKeyPrompt(callback) {
+            const apiKey = getApiKey();
+            if (!apiKey) {
+                window.pendingAiAction = callback;
+                document.getElementById('apikey-modal').classList.remove('hidden');
+                document.getElementById('apikey-input').focus();
+                return false;
+            }
+            return true;
+        }
+
+        function openApiKeySettings() {
+            const apiKey = getApiKey();
+            document.getElementById('apikey-input').value = apiKey || '';
+            document.getElementById('apikey-modal').classList.remove('hidden');
+            document.getElementById('apikey-input').focus();
+        }
+        
+        // ========== 准入系统 ==========
+        const gateQuestions = [
+            {
+                q: "在亲密关系中，你更渴望：",
+                options: [
+                    { text: "被征服", score: 0 },
+                    { text: "被看见", score: 1 },
+                    { text: "相互探索", score: 1 }
+                ]
+            },
+            {
+                q: "什么样的场景最能激发你的想象？",
+                options: [
+                    { text: "直白的视觉刺激", score: 0 },
+                    { text: "氛围与张力", score: 1 },
+                    { text: "文字与对话", score: 1 }
+                ]
+            },
+            {
+                q: "你如何看待欲望？",
+                options: [
+                    { text: "需要隐藏的羞耻", score: 0 },
+                    { text: "自然的生命力", score: 1 },
+                    { text: "艺术与美", score: 1 }
+                ]
+            }
+        ];
+
+        const personaNames = [
+            "周二的百合", "雨夜的微光", "沉默的诗", "迷途的鹿", 
+            "午后的阴影", "晨间的露珠", "夜半的钟声", "深海的珍珠",
+            "风中的羽毛", "书页的墨香"
+        ];
+
+        const personaSymbols = ["✨", "🌙", "🌹", "🦌", "📖", "💫", "🕯️", "🌊", "🍷", "🎭"];
+
+        function initGate() {
+            const questionsDiv = document.getElementById('gate-questions');
+            let currentQ = 0;
+            let totalScore = 0;
+
+            function showQuestion(index) {
+                if (index >= gateQuestions.length) {
+                    const resultDiv = document.getElementById('gate-result');
+                    const questionsDiv = document.getElementById('gate-questions');
+                    questionsDiv.classList.add('hidden');
+                    resultDiv.classList.remove('hidden');
+                    
+                    if (totalScore >= 2) {
+                        document.getElementById('gate-result-text').textContent = "你通过了共鸣测试";
+                    } else {
+                        document.getElementById('gate-result-text').textContent = "感谢你的参与";
+                    }
+                    return;
+                }
+
+                const q = gateQuestions[index];
+                questionsDiv.innerHTML = `
+                    <div class="fade-in">
+                        <p class="font-serif text-lg text-muse-gold mb-6">${q.q}</p>
+                        <div class="space-y-3">
+                            ${q.options.map((opt, i) => `
+                                <button onclick="selectGateOption(${index}, ${i}, ${opt.score})" 
+                                        class="w-full text-left p-4 bg-stone-800 hover:bg-stone-700 border border-stone-700 hover:border-muse-rose/50 rounded-lg transition">
+                                    ${opt.text}
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            window.selectGateOption = function(qIndex, optIndex, score) {
+                totalScore += score;
+                showQuestion(qIndex + 1);
+            };
+
+            showQuestion(0);
+        }
+
+        function proceedToMasquerade() {
+            if (localStorage.getItem('muse_persona')) {
+                enterGallery();
+                return;
+            }
+
+            document.getElementById('gate-modal').classList.add('hidden');
+            const persona = generatePersona();
+            document.getElementById('persona-name').textContent = persona.name;
+            document.getElementById('persona-symbol').textContent = persona.symbol;
+            document.getElementById('masquerade-modal').classList.remove('hidden');
+            
+            localStorage.setItem('muse_persona', JSON.stringify(persona));
+            localStorage.setItem('muse_gate_passed', 'true');
+        }
+
+        function generatePersona() {
+            const nameIndex = Math.floor(Math.random() * personaNames.length);
+            return {
+                name: personaNames[nameIndex],
+                symbol: personaSymbols[nameIndex]
+            };
+        }
+
+        function enterGallery() {
+            document.getElementById('masquerade-modal').classList.add('hidden');
+            document.getElementById('gate-modal').classList.add('hidden');
+            
+            const bgm = document.getElementById('bgm-rain');
+            if(bgm) {
+                bgm.volume = 0.3; 
+                bgm.play().catch(e => console.log("Auto-play blocked"));
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', function() {
+            // 自动配置 API Key
+            if (!localStorage.getItem('muse_gemini_apikey')) {
+                localStorage.setItem('muse_gemini_apikey', 'AIzaSyDGh1m9jeEj-H1AmuJIGVk2TgwUlO-s3mY');
+            }
+            
+            if (!localStorage.getItem('muse_gate_passed')) {
+                document.getElementById('gate-modal').classList.remove('hidden');
+                initGate();
+            } else {
+                 // 移除自动播放背景音乐
+                 // setTimeout(() => {
+                 //     const bgm = document.getElementById('bgm-rain');
+                 //     if(bgm) bgm.play().catch(e => console.log("Autoplay blocked"));
+                 // }, 1000);
+            }
+        });
+
+        // ========== 背景音乐控制 ==========
+        function toggleBackgroundMusic() {
+            const bgm = document.getElementById('bgm-rain');
+            const indicator = document.getElementById('bgm-indicator');
+            const text = document.getElementById('bgm-text');
+            
+            if (!bgm) return;
+            
+            if (bgm.paused) {
+                bgm.volume = 0.3;
+                bgm.play().then(() => {
+                    indicator.classList.remove('bg-stone-500');
+                    indicator.classList.add('bg-green-500', 'animate-pulse');
+                    text.textContent = 'BGM ON';
+                }).catch(e => {
+                    console.log("播放失败:", e);
+                    alert("音频播放失败，请检查浏览器设置");
+                });
+            } else {
+                bgm.pause();
+                indicator.classList.remove('bg-green-500', 'animate-pulse');
+                indicator.classList.add('bg-stone-500');
+                text.textContent = 'BGM';
+            }
+        }
+
+        // ========== 音频播放逻辑 ==========
+        function togglePlay(element) {
+            const playIcon = element.querySelector('.play-icon');
+            const pauseIcon = element.querySelector('.pause-icon');
+            const playBtn = element.querySelector('.play-btn');
+            const audio = element.querySelector('audio');
+
+            if (!playIcon || !pauseIcon || !playBtn || !audio) return; 
+
+            const isPlaying = playIcon.classList.contains('hidden');
+
+            document.querySelectorAll('audio').forEach(a => {
+                if (a !== audio && !a.id.includes('bgm')) {
+                    a.pause();
+                    a.currentTime = 0;
+                }
+            });
+            
+            document.querySelectorAll('.rounded-lg').forEach(card => {
+                if(card !== element) {
+                    const pIcon = card.querySelector('.play-icon');
+                    const psIcon = card.querySelector('.pause-icon');
+                    const pBtn = card.querySelector('.play-btn');
+                    
+                    if(pIcon && psIcon && pBtn) {
+                        pIcon.classList.remove('hidden');
+                        psIcon.classList.add('hidden');
+                        pBtn.classList.remove('playing-animation', 'border-muse-rose', 'bg-white/10');
+                    }
+                }
+            });
+
+            if (!isPlaying) {
+                const bgm = document.getElementById('bgm-rain');
+                if(bgm && !bgm.paused) bgm.pause();
+
+                audio.play().then(() => {
+                    playIcon.classList.add('hidden');
+                    pauseIcon.classList.remove('hidden');
+                    playBtn.classList.add('playing-animation', 'border-muse-rose', 'bg-white/10');
+                }).catch(e => {
+                    console.error("Playback failed:", e);
+                });
+            } else {
+                audio.pause();
+                playIcon.classList.remove('hidden');
+                pauseIcon.classList.add('hidden');
+                playBtn.classList.remove('playing-animation', 'border-muse-rose', 'bg-white/10');
+            }
+        }
+
+        // ========== Gemini API ==========
+        async function callGemini(prompt, systemInstruction = "", useHistory = false) {
+            const apiKey = getApiKey();
+            if (!apiKey) {
+                return "请配置 Gemini API Key";
+            }
+
+            let contents = [{ parts: [{ text: prompt }] }];
+            
+            if (useHistory) {
+                const history = getCompanionHistory();
+                if (history.length > 0) {
+                    contents = history.slice(-5).concat(contents);
+                }
+            }
+
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            const payload = {
+                contents: contents,
+                systemInstruction: { parts: [{ text: systemInstruction }] }
+            };
+            
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+                return data.candidates?.[0]?.content?.parts?.[0]?.text || "Muse 正在休息...";
+            } catch (error) {
+                console.error("API Error:", error);
+                return "连接失败，请稍后再试。";
+            }
+        }
+
+        // ========== Gemini API Audio Generation (TTS) ==========
+        async function generateSpeech(text, voiceName) {
+            const apiKey = getApiKey();
+            if (!apiKey) { alert("请配置 API Key 以启用语音功能"); throw new Error("No API Key"); }
+
+            // 注意：Gemini 的 TTS 功能可能还在测试阶段，这里提供一个兜底方案
+            console.log("尝试使用 Gemini TTS，如果失败将使用浏览器内置语音");
+            
+            try {
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`;
+                
+                const payload = {
+                    contents: [{ parts: [{ text: text }] }],
+                    generationConfig: {
+                        responseModalities: ["AUDIO"],
+                        speechConfig: {
+                            voiceConfig: {
+                                prebuiltVoiceConfig: {
+                                    voiceName: voiceName
+                                }
+                            }
+                        }
+                    }
+                };
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!response.ok) {
+                    const err = await response.json();
+                    console.error("Gemini TTS API Error:", err);
+                    throw new Error(err.error?.message || "TTS API request failed");
+                }
+                
+                const data = await response.json();
+                const audioData = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+                
+                if (audioData) {
+                    return audioData;
+                } else {
+                    throw new Error("No audio data returned from API");
+                }
+            } catch (error) {
+                console.error("Gemini TTS failed, falling back to browser speech:", error);
+                throw error; // 让调用者处理降级
+            }
+        }
+
+        function pcmToWav(base64PCM) {
+            const binaryString = window.atob(base64PCM);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            
+            const wavHeader = new ArrayBuffer(44);
+            const view = new DataView(wavHeader);
+            
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, 36 + bytes.length, true);
+            writeString(view, 8, 'WAVE');
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true); 
+            view.setUint16(22, 1, true); 
+            view.setUint32(24, 24000, true); 
+            view.setUint32(28, 24000 * 2, true); 
+            view.setUint16(32, 2, true); 
+            view.setUint16(34, 16, true); 
+            writeString(view, 36, 'data');
+            view.setUint32(40, bytes.length, true);
+            
+            const blob = new Blob([view, bytes], { type: 'audio/wav' });
+            return URL.createObjectURL(blob);
+        }
+
+        function writeString(view, offset, string) {
+            for (let i = 0; i < string.length; i++) {
+                view.setUint8(offset + i, string.charCodeAt(i));
+            }
+        }
+
+        // ========== 声线设置与试听 ==========
+        const VOICE_MAP = {
+            'yushao': 'Aoede',    // 低沉御少音 -> Aoede (知性女声)
+            'shaonian': 'Puck',   // 清冷少年音 -> Puck (清晰男声)
+            'dashu': 'Charon'     // 温柔大叔音 -> Charon (低沉男声)
+        };
+
+        function openVoiceSettings() {
+            document.getElementById('voice-settings-modal').classList.remove('hidden');
+            const settings = JSON.parse(localStorage.getItem('muse_voice_settings') || '{"type":"yushao"}');
+            selectVoice(settings.type);
+        }
+
+        function closeVoiceSettings() {
+            document.getElementById('voice-settings-modal').classList.add('hidden');
+        }
+        
+        function selectVoice(type) {
+            document.querySelectorAll('.voice-card').forEach(card => {
+                const radio = card.querySelector(`input[value="${type}"]`);
+                if(radio) {
+                    card.classList.add('border-muse-rose', 'bg-white/5');
+                    radio.checked = true;
+                    card.querySelector('.selection-indicator div')?.classList.remove('hidden');
+                } else {
+                    card.classList.remove('border-muse-rose', 'bg-white/5');
+                    card.querySelector('.selection-indicator div')?.classList.add('hidden');
+                }
+            });
+            localStorage.setItem('muse_voice_settings', JSON.stringify({ type: type }));
+        }
+        
+        // 辅助函数：使用浏览器自带语音作为兜底
+        function fallbackSpeech(text, type) {
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'zh-CN';
+            
+            // 尝试模拟声线特征
+            if (type === 'yushao') { // 御姐音
+                utterance.rate = 0.8;
+                utterance.pitch = 0.8;
+            } else if (type === 'shaonian') { // 少年音
+                utterance.rate = 1.1;
+                utterance.pitch = 1.2; 
+            } else if (type === 'dashu') { // 大叔音
+                utterance.rate = 0.9;
+                utterance.pitch = 0.6;
+            }
+            window.speechSynthesis.speak(utterance);
+        }
+
+        async function playSample(type, btnElement) {
+            const originalIcon = btnElement.querySelector('.play-icon');
+            const loader = btnElement.querySelector('.loader');
+            const textSpan = btnElement.querySelector('.text');
+            
+            if(originalIcon) originalIcon.classList.add('hidden');
+            if(loader) loader.classList.remove('hidden');
+            if(textSpan) textSpan.innerText = "生成中...";
+            
+            if (window.currentAudio) {
+                window.currentAudio.pause();
+                window.currentAudio = null;
+            }
+
+            let text = "";
+            if (type === 'yushao') text = "过来，不用说话，听我就好。";
+            else if (type === 'shaonian') text = "别离我太近，我怕控制不住。";
+            else if (type === 'dashu') text = "把手给我，我不急，等你准备好。";
+
+            const voiceName = VOICE_MAP[type];
+            
+            try {
+                // 首先尝试 Gemini TTS
+                const apiKey = getApiKey();
+                if (apiKey) {
+                    const pcmData = await generateSpeech(text, voiceName);
+                    if (pcmData) {
+                        const audioUrl = pcmToWav(pcmData);
+                        const audio = new Audio(audioUrl);
+                        window.currentAudio = audio;
+                        await audio.play();
+                        
+                        // 成功播放 AI 语音
+                        if(textSpan) textSpan.innerText = "AI 语音";
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.log("AI 语音生成失败，使用浏览器语音:", e);
+            }
+            
+            // 降级到浏览器语音
+            try {
+                fallbackSpeech(text, type);
+                if(textSpan) textSpan.innerText = "浏览器语音";
+            } catch (e) {
+                console.error("语音播放完全失败:", e);
+                alert("语音播放失败，请检查浏览器设置");
+                if(textSpan) textSpan.innerText = "播放失败";
+            } finally {
+                // 恢复 UI
+                if(originalIcon) originalIcon.classList.remove('hidden');
+                if(loader) loader.classList.add('hidden');
+                setTimeout(() => {
+                    if(textSpan && textSpan.innerText !== "试听") {
+                        textSpan.innerText = "试听";
+                    }
+                }, 2000);
+            }
+        }
+
+        // ========== AI 剧本生成与朗读 ==========
+        async function generateScript() {
+            if (!showApiKeyPrompt(generateScript)) return;
+            
+            const input = document.getElementById('script-prompt');
+            const resultDiv = document.getElementById('script-result');
+            const btn = document.getElementById('script-btn');
+            
+            if (!input.value.trim()) return;
+
+            const originalBtnText = btn.innerText;
+            btn.innerText = "生成中...";
+            btn.disabled = true;
+            resultDiv.classList.remove('hidden');
+            resultDiv.innerHTML = '<span class="animate-pulse">Muse 正在编织梦境...</span>';
+
+            const systemPrompt = "你是一个女性向情色文学助手。请根据用户的关键词，写一段简短的、充满张力、感官描写丰富（声音、气味、触觉）的独白或场景描述。风格要唯美、含蓄、注重氛围感，避免过于直白的器官描写。字数控制在100字以内。用中文回答。";
+            const aiResponse = await callGemini(input.value, systemPrompt);
+
+            resultDiv.innerHTML = marked.parse(aiResponse);
+            const speakBtn = document.getElementById('speak-btn');
+            speakBtn.classList.remove('hidden');
+            
+            const newSpeakBtn = speakBtn.cloneNode(true);
+            speakBtn.parentNode.replaceChild(newSpeakBtn, speakBtn);
+            newSpeakBtn.onclick = () => speakScript(aiResponse.replace(/[#*`]/g, ''));
+            
+            btn.innerText = originalBtnText;
+            btn.disabled = false;
+        }
+
+        async function speakScript(text) {
+            if (!showApiKeyPrompt(() => speakScript(text))) return;
+
+            const btn = document.getElementById('speak-btn');
+            const loader = document.getElementById('speak-loader');
+            
+            if(loader) loader.classList.remove('hidden');
+            btn.disabled = true;
+
+            const settings = JSON.parse(localStorage.getItem('muse_voice_settings') || '{"type":"yushao"}');
+            const voiceName = VOICE_MAP[settings.type] || 'Aoede';
+
+            try {
+                const pcmData = await generateSpeech(text, voiceName);
+                if (pcmData) {
+                    if (window.currentAudio) window.currentAudio.pause();
+                    const audioUrl = pcmToWav(pcmData);
+                    const audio = new Audio(audioUrl);
+                    window.currentAudio = audio;
+                    audio.play();
+                }
+            } catch (e) {
+                console.error("Script TTS Failed:", e);
+                // 失败自动降级到浏览器语音
+                fallbackSpeech(text, settings.type); 
+            } finally {
+                if(loader) loader.classList.add('hidden');
+                btn.disabled = false;
+            }
+        }
+
+        // ========== 互动故事 & 语音 ==========
+        let currentStoryContext = "";
+        let storyVoiceEnabled = false;
+
+        function openStoryModal(storyType = 'elevator') {
+            const modal = document.getElementById('story-modal');
+            const contentDiv = document.getElementById('story-content');
+            const titleDiv = document.getElementById('story-title');
+            contentDiv.innerHTML = ''; 
+            
+            if (storyType === 'elevator') {
+                titleDiv.textContent = "私人电梯";
+                currentStoryContext = "电梯故障停在了22层。灯光闪烁，只有你和他两个人。";
+                contentDiv.innerHTML = `<p>电梯猛地晃动了一下，红色的故障灯在头顶闪烁，发出微弱的滋滋声。狭小的空间里，原本礼貌的社交距离瞬间被压缩了。</p><p>你闻到了他身上淡淡的木质香水味，混杂着外面雨夜的潮湿气息。他松开了领带，转过身看着你，眼神深邃得像没有尽头的走廊。</p><p>"看来我们要在这里待一会儿了。"他的声音很低，带着一丝不易察觉的沙哑。</p>`;
+            } else if (storyType === 'library') {
+                titleDiv.textContent = "禁忌图书馆";
+                currentStoryContext = "在这排书架的最深处，没有人会来。";
+                contentDiv.innerHTML = `<p>图书馆的闭馆音乐已经响起，但你还在那排最深的书架前。她也在那里，手指轻抚过书脊，像是在寻找什么。</p><p>你们的目光在书架的缝隙中相遇。她的嘴角微微上扬，像是发现了什么秘密。</p><p>"你也喜欢这本书？"她的声音很轻，像是怕打破这安静的氛围。</p>`;
+            } else if (storyType === 'blindfold') {
+                titleDiv.textContent = "Trust (信任)";
+                currentStoryContext = "在一个完全漆黑的房间，他递给你一条领带，要求你戴上它。";
+                 contentDiv.innerHTML = `<p>房间里很暗，只有窗外透进来的一点月光。他站在你面前，手里拿着一条深色的丝绸领带。</p><p>"戴上它。" 他的语气虽然平静，却带着一种不容置疑的掌控感。丝绸滑过你的手背，凉凉的。</p><p>你看向他的眼睛，那里充满了耐心，以及一种等待猎物自投罗网的笃定。</p>`;
+            }
+            modal.classList.remove('hidden');
+            document.getElementById('story-input').focus();
+            setTimeout(applyGenderTextSwap, 100);
+        }
+
+        function closeStoryModal() {
+            document.getElementById('story-modal').classList.add('hidden');
+            if (window.currentAudio) window.currentAudio.pause();
+        }
+
+        function toggleStoryVoice() {
+            storyVoiceEnabled = !storyVoiceEnabled;
+            const btn = document.getElementById('voice-toggle-btn');
+            btn.classList.toggle('text-muse-rose', storyVoiceEnabled);
+            btn.classList.toggle('text-stone-500', !storyVoiceEnabled);
+        }
+
+        async function continueStory() {
+            if (!showApiKeyPrompt(continueStory)) return;
+            const input = document.getElementById('story-input');
+            const contentDiv = document.getElementById('story-content');
+            if (!input.value.trim()) return;
+
+            const userAction = input.value;
+            input.value = '';
+
+            const userP = document.createElement('p');
+            userP.className = "text-muse-rose italic text-sm border-l-2 border-muse-rose pl-3 opacity-80";
+            userP.innerText = `> ${userAction}`;
+            contentDiv.appendChild(userP);
+            contentDiv.scrollTop = contentDiv.scrollHeight;
+
+            const loadingP = document.createElement('p');
+            loadingP.className = "text-stone-500 animate-pulse text-sm";
+            loadingP.id = "story-loading";
+            loadingP.innerText = "正在续写...";
+            contentDiv.appendChild(loadingP);
+            contentDiv.scrollTop = contentDiv.scrollHeight;
+
+            const fullPrompt = `故事背景: ${currentStoryContext}\n用户动作: "${userAction}"\n任务: 续写2-3段剧情，侧重心理描写和感官张力。用中文。`;
+            const systemPrompt = "你是 Muse 平台的 AI 作者。写作风格：唯美、含蓄、慢热、注重氛围感。用中文回答。";
+
+            const aiResponse = await callGemini(fullPrompt, systemPrompt);
+            currentStoryContext += `\n${userAction}\n${aiResponse}`;
+
+            document.getElementById('story-loading').remove();
+            const aiDiv = document.createElement('div');
+            aiDiv.innerHTML = marked.parse(aiResponse);
+            contentDiv.appendChild(aiDiv);
+            contentDiv.scrollTop = contentDiv.scrollHeight;
+
+            if (storyVoiceEnabled) {
+                const settings = JSON.parse(localStorage.getItem('muse_voice_settings') || '{"type":"yushao"}');
+                const voiceName = VOICE_MAP[settings.type] || 'Aoede';
+                
+                const voiceLoading = document.createElement('span');
+                voiceLoading.className = "text-[10px] text-stone-600 ml-2 animate-pulse";
+                voiceLoading.innerText = " (正在生成语音...)";
+                aiDiv.appendChild(voiceLoading);
+
+                try {
+                    const pcmData = await generateSpeech(aiResponse.replace(/[#*`]/g, ''), voiceName);
+                    if (pcmData) {
+                        if (window.currentAudio) window.currentAudio.pause();
+                        const audioUrl = pcmToWav(pcmData);
+                        const audio = new Audio(audioUrl);
+                        window.currentAudio = audio;
+                        audio.play();
+                    }
+                } catch (e) {
+                    console.error("Story TTS Failed:", e);
+                    // 故事模式下可以静默降级，或者显示一个小图标
+                    fallbackSpeech(aiResponse.replace(/[#*`]/g, ''), settings.type);
+                } finally {
+                    voiceLoading.remove();
+                }
+            }
+        }
+        
+        // ========== The Oracle (缪斯神谕) ==========
+        function openOracle() {
+            document.getElementById('oracle-modal').classList.remove('hidden');
+            resetOracle();
+        }
+
+        function closeOracle() {
+            document.getElementById('oracle-modal').classList.add('hidden');
+        }
+
+        function resetOracle() {
+            document.getElementById('oracle-input-view').classList.remove('hidden');
+            document.getElementById('oracle-result-view').classList.add('hidden');
+            document.getElementById('oracle-result-view').classList.remove('flex');
+            document.getElementById('oracle-query').value = "";
+        }
+
+        async function askOracle() {
+            if (!showApiKeyPrompt(askOracle)) return;
+            
+            const query = document.getElementById('oracle-query').value.trim() || "What do I need right now?";
+            const btn = document.querySelector('#oracle-input-view button');
+            const originalText = btn.innerHTML;
+            
+            btn.innerHTML = `<span class="animate-pulse">COMMUNING...</span>`;
+            btn.disabled = true;
+
+            const systemPrompt = "You are the Muse Oracle. Provide a mystical, sensual, and metaphorical Tarot-like card reading. \nOutput format MUST be strictly valid JSON: { \"card\": \"Card Title (e.g. The Velvet Rope)\", \"icon\": \"Emoji (e.g. 🕯️)\", \"meaning\": \"A short, poetic interpretation in Chinese (max 60 words).\" }";
+            const userPrompt = `User asks: "${query}". Reveal the card.`;
+
+            try {
+                const jsonStr = await callGemini(userPrompt, systemPrompt);
+                
+                const cleanJson = jsonStr.replace(/```json/g, '').replace(/```/g, '').trim();
+                const result = JSON.parse(cleanJson);
+
+                document.getElementById('card-icon').innerText = result.icon || "🔮";
+                document.getElementById('card-title').innerText = result.card || "The Unknown";
+                document.getElementById('card-meaning').innerHTML = `<p>${result.meaning}</p>`;
+
+                document.getElementById('oracle-input-view').classList.add('hidden');
+                document.getElementById('oracle-result-view').classList.remove('hidden');
+                document.getElementById('oracle-result-view').classList.add('flex');
+
+            } catch (e) {
+                console.error("Oracle Error:", e);
+                alert("The Oracle is silent. Try again.");
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        // ========== Infinite Sanctuary (无限树洞) ==========
+        async function pickSanctuaryLetter() {
+            if (!showApiKeyPrompt(pickSanctuaryLetter)) return;
+
+            const contentDiv = document.getElementById('sanctuary-letter-content');
+            const writeView = document.getElementById('sanctuary-write');
+            const readView = document.getElementById('sanctuary-read');
+            const btn = event.target.closest('button');
+            
+            const originalContent = btn.innerHTML;
+            btn.innerHTML = "<span>✨</span> Searching...";
+            btn.disabled = true;
+
+            const systemPrompt = "Write a short, anonymous confession for a 'tree hollow' app. Themes: secret crush, fleeting desire, midnight thoughts, loneliness, or romance. Style: poetic, raw, emotional. Max 50 words. Language: Chinese.";
+            const userPrompt = "Generate one new letter.";
+
+            try {
+                const letterText = await callGemini(userPrompt, systemPrompt);
+                contentDiv.innerHTML = `<p class="italic text-lg text-muse-gold">"${letterText}"</p>`;
+                writeView.classList.add('hidden');
+                readView.classList.remove('hidden');
+            } catch (e) {
+                console.error("Sanctuary Error:", e);
+                alert("信箱暂时关闭了。");
+            } finally {
+                btn.innerHTML = originalContent;
+                btn.disabled = false;
+            }
+        }
+
+        function openSanctuary() { document.getElementById('sanctuary-modal').classList.remove('hidden'); document.getElementById('sanctuary-write').classList.remove('hidden'); document.getElementById('sanctuary-read').classList.add('hidden'); }
+        function closeSanctuary() { document.getElementById('sanctuary-modal').classList.add('hidden'); }
+        function sendSanctuaryLetter() { const text = document.getElementById('sanctuary-text').value.trim(); if (!text) return; const forbiddenWords = ['暴力', '血腥', '辱骂', '攻击']; if (forbiddenWords.some(word => text.includes(word))) { alert('请保持社区温暖与安全'); return; } const btn = event.target; btn.textContent = '投递中...'; btn.disabled = true; setTimeout(() => { alert('你的信件已投递'); document.getElementById('sanctuary-text').value = ''; btn.textContent = '投递'; btn.disabled = false; const letters = JSON.parse(localStorage.getItem('muse_sanctuary_letters') || '[]'); letters.push({ text, timestamp: Date.now() }); localStorage.setItem('muse_sanctuary_letters', JSON.stringify(letters)); }, 1000); }
+        function closeSanctuaryRead() { document.getElementById('sanctuary-read').classList.add('hidden'); document.getElementById('sanctuary-write').classList.remove('hidden'); }
+        function replySanctuaryLetter() { alert('回信将直接发送到对方信箱，不会公开展示'); closeSanctuaryRead(); }
+        
+        // ========== Companion ==========
+        function openCompanion() { document.getElementById('companion-modal').classList.remove('hidden'); loadCompanionHistory(); }
+        function closeCompanion() { document.getElementById('companion-modal').classList.add('hidden'); if (window.currentAudio) window.currentAudio.pause(); }
+        function getCompanionHistory() { const history = JSON.parse(localStorage.getItem('muse_companion_history') || '[]'); return history.map(item => ({ parts: [{ text: item.role === 'user' ? item.text : item.text }] })); }
+        function saveCompanionMessage(role, text) { const history = JSON.parse(localStorage.getItem('muse_companion_history') || '[]'); history.push({ role, text, timestamp: Date.now() }); if (history.length > 20) { history.shift(); } localStorage.setItem('muse_companion_history', JSON.stringify(history)); }
+        function loadCompanionHistory() { const chatDiv = document.getElementById('companion-chat'); const history = JSON.parse(localStorage.getItem('muse_companion_history') || '[]'); chatDiv.innerHTML = ''; if (history.length === 0) { chatDiv.innerHTML = '<div class="text-center text-stone-500 text-sm mb-4"><p>开始与你的 AI 伴侣对话</p></div>'; return; } history.forEach(item => { const msgDiv = document.createElement('div'); msgDiv.className = item.role === 'user' ? 'text-right' : 'text-left'; const bubble = document.createElement('div'); bubble.className = item.role === 'user' ? 'inline-block bg-muse-rose/20 text-stone-300 px-4 py-2 rounded-lg max-w-[80%]' : 'inline-block bg-stone-800 text-stone-300 px-4 py-2 rounded-lg max-w-[80%]'; bubble.textContent = item.text; msgDiv.appendChild(bubble); chatDiv.appendChild(msgDiv); }); chatDiv.scrollTop = chatDiv.scrollHeight; }
+        
+        async function sendCompanionMessage() {
+            if (!showApiKeyPrompt(sendCompanionMessage)) return;
+            
+            const input = document.getElementById('companion-input');
+            const chatDiv = document.getElementById('companion-chat');
+            if (!input.value.trim()) return;
+
+            const userMessage = input.value;
+            input.value = '';
+
+            const userDiv = document.createElement('div');
+            userDiv.className = 'text-right';
+            const userBubble = document.createElement('div');
+            userBubble.className = 'inline-block bg-muse-rose/20 text-stone-300 px-4 py-2 rounded-lg max-w-[80%]';
+            userBubble.textContent = userMessage;
+            userDiv.appendChild(userBubble);
+            chatDiv.appendChild(userDiv);
+            chatDiv.scrollTop = chatDiv.scrollHeight;
+
+            saveCompanionMessage('user', userMessage);
+
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'text-left';
+            loadingDiv.id = 'companion-loading';
+            const loadingBubble = document.createElement('div');
+            loadingBubble.className = 'inline-block bg-stone-800 text-stone-500 px-4 py-2 rounded-lg';
+            loadingBubble.innerHTML = '<span class="animate-pulse">对方正在输入...</span>';
+            loadingDiv.appendChild(loadingBubble);
+            chatDiv.appendChild(loadingDiv);
+            chatDiv.scrollTop = chatDiv.scrollHeight;
+
+            const systemPrompt = "你是 Muse 平台的 AI 伴侣。风格：温柔、理解、有深度。用中文回答。";
+            const aiResponse = await callGemini(userMessage, systemPrompt, true);
+
+            document.getElementById('companion-loading').remove();
+            saveCompanionMessage('assistant', aiResponse);
+
+            const aiDiv = document.createElement('div');
+            aiDiv.className = 'text-left';
+            const aiBubble = document.createElement('div');
+            aiBubble.className = 'inline-block bg-stone-800 text-stone-300 px-4 py-2 rounded-lg max-w-[80%]';
+            aiBubble.textContent = aiResponse;
+            aiDiv.appendChild(aiBubble);
+            chatDiv.appendChild(aiDiv);
+            chatDiv.scrollTop = chatDiv.scrollHeight;
+
+            // 语音播放
+            const settings = JSON.parse(localStorage.getItem('muse_voice_settings') || '{"type":"yushao"}');
+            const voiceName = VOICE_MAP[settings.type] || 'Aoede';
+            
+            try {
+                const pcmData = await generateSpeech(aiResponse, voiceName);
+                if (pcmData) {
+                    if (window.currentAudio) window.currentAudio.pause();
+                    const audioUrl = pcmToWav(pcmData);
+                    const audio = new Audio(audioUrl);
+                    window.currentAudio = audio;
+                    audio.play();
+                }
+            } catch (e) {
+                console.error("Companion TTS Failed:", e);
+                fallbackSpeech(aiResponse, settings.type);
+            }
+        }
+        
+        // ========== GENDER SWAP LOGIC ==========
+        const genderAssets = {
+            'male': {
+                'img-sensual-light': 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=600&auto=format&fit=crop',
+                'img-rainy-study': 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=600&auto=format&fit=crop',
+                'img-elevator': 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=600&auto=format&fit=crop',
+                'img-skin': 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?q=80&w=600&auto=format&fit=crop',
+                'img-steam': 'https://images.unsplash.com/photo-1566492031773-4f4e44671d66?q=80&w=600&auto=format&fit=crop',
+                'img-hands': 'https://images.unsplash.com/photo-1594736797933-d0401ba2fe65?q=80&w=600&auto=format&fit=crop',
+                'img-couple': 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=600&auto=format&fit=crop',
+                'img-torso': 'https://images.unsplash.com/photo-1581833971358-2c8b550f87b3?q=80&w=600&auto=format&fit=crop',
+                'img-blindfold': 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?q=80&w=600&auto=format&fit=crop',
+                'img-neck': 'https://images.unsplash.com/photo-1552374196-c4e7ffc6e126?q=80&w=600&auto=format&fit=crop',
+                'img-night': 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=600&auto=format&fit=crop'
+            },
+            'female': {
+                'img-sensual-light': 'https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=600&auto=format&fit=crop',
+                'img-rainy-study': 'https://images.unsplash.com/photo-1515694346937-94d85e41e6f0?q=80&w=600&auto=format&fit=crop',
+                'img-elevator': 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=600&auto=format&fit=crop',
+                'img-skin': 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=600&auto=format&fit=crop',
+                'img-steam': 'https://images.unsplash.com/photo-1584132967334-10e028bd69f7?q=80&w=600&auto=format&fit=crop',
+                'img-hands': 'https://images.unsplash.com/photo-1520024146169-3240400354ae?q=80&w=600&auto=format&fit=crop',
+                'img-couple': 'https://images.unsplash.com/photo-1516585427167-9f4af9627e6c?q=80&w=600&auto=format&fit=crop',
+                'img-torso': 'https://images.unsplash.com/photo-1515934751635-c81c6bc9a2d8?q=80&w=600&auto=format&fit=crop',
+                'img-blindfold': 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=600&auto=format&fit=crop',
+                'img-neck': 'https://images.unsplash.com/photo-1512316609839-ce289d3eba0a?q=80&w=600&auto=format&fit=crop',
+                'img-night': 'https://images.unsplash.com/photo-1596704017254-9b121068fb31?q=80&w=600&auto=format&fit=crop'
+            }
+        };
+
+        function updateGenderPreference(pref) {
+            localStorage.setItem('muse_gender_pref', pref);
+            
+            const assets = genderAssets[pref] || genderAssets['male'];
+            for (const [id, url] of Object.entries(assets)) {
+                const img = document.getElementById(id);
+                if (img) {
+                    img.style.opacity = '0.5';
+                    setTimeout(() => {
+                        img.src = url;
+                        img.style.opacity = '1';
+                    }, 200);
+                }
+            }
+
+            const textElements = document.querySelectorAll('.gender-text-swap');
+            textElements.forEach(el => {
+                let text = el.innerText;
+                if (pref === 'male') {
+                    text = text.replace(/她/g, '他').replace(/She/g, 'He').replace(/Her/g, 'His');
+                } else {
+                    text = text.replace(/他/g, '她').replace(/He/g, 'She').replace(/His/g, 'Her');
+                }
+                el.innerText = text;
+            });
+        }
+        
+        function applyGenderTextSwap() {
+             const pref = localStorage.getItem('muse_gender_pref') || 'male';
+             updateGenderPreference(pref);
+        }
+
+        // ========== Spectrum Functions ==========
+        function openSpectrumSettings() { 
+            document.getElementById('spectrum-modal').classList.remove('hidden'); 
+            const prefs = JSON.parse(localStorage.getItem('muse_spectrum_prefs') || '[]'); 
+            prefs.forEach(pref => { const checkbox = document.querySelector(`#spectrum-modal input[value="${pref}"]`); if (checkbox) checkbox.checked = true; });
+            
+            const genderPref = localStorage.getItem('muse_gender_pref') || 'male';
+            const radio = document.querySelector(`input[name="gender-pref"][value="${genderPref}"]`);
+            if (radio) radio.checked = true;
+        }
+        function closeSpectrumSettings() { document.getElementById('spectrum-modal').classList.add('hidden'); updateSpectrumFilter(); }
+        function updateSpectrumFilter() { 
+            const checked = Array.from(document.querySelectorAll('#spectrum-modal input[type="checkbox"]:checked')).map(cb => cb.value); 
+            localStorage.setItem('muse_spectrum_prefs', JSON.stringify(checked)); 
+            
+            const genderPref = document.querySelector('input[name="gender-pref"]:checked')?.value || 'male';
+            updateGenderPreference(genderPref);
+
+            const cards = document.querySelectorAll('#gallery-grid > div'); 
+            if (checked.length === 0) { cards.forEach(card => card.style.display = ''); return; } 
+            cards.forEach(card => { 
+                const tags = card.getAttribute('data-tags') || 'all'; 
+                const tagArray = tags.split(','); 
+                const shouldShow = checked.some(pref => tagArray.includes(pref)) || tagArray.includes('all'); 
+                card.style.display = shouldShow ? '' : 'none'; 
+            }); 
+        }
+        
+        function filterContent(type) { 
+            const cards = document.querySelectorAll('#gallery-grid > div'); 
+            cards.forEach(card => { 
+                if (type === 'all') { 
+                    card.style.display = ''; 
+                } else { 
+                    const tags = card.getAttribute('data-tags') || ''; 
+                    card.style.display = tags.includes(type) ? '' : 'none'; 
+                } 
+            }); 
+        }
+        
+        function scrollToJoin() { 
+            document.getElementById('join-section').scrollIntoView({ behavior: 'smooth' }); 
+            setTimeout(() => { 
+                document.querySelector('input[type="email"]').focus(); 
+            }, 500); 
+        }
+        
+        function submitForm(e) { 
+            e.preventDefault(); 
+            const btn = e.target.querySelector('button'); 
+            btn.innerText = "..."; 
+            setTimeout(() => { 
+                document.getElementById('success-msg').classList.remove('hidden'); 
+                btn.innerText = "SENT"; 
+                btn.classList.add('bg-green-900', 'text-white'); 
+                e.target.reset(); 
+            }, 1000); 
+        }
+        
+        window.addEventListener('DOMContentLoaded', function() { 
+            const prefs = JSON.parse(localStorage.getItem('muse_spectrum_prefs') || '[]'); 
+            if (prefs.length > 0) { 
+                prefs.forEach(pref => { 
+                    const checkbox = document.querySelector(`#spectrum-modal input[value="${pref}"]`); 
+                    if (checkbox) checkbox.checked = true; 
+                }); 
+                updateSpectrumFilter(); 
+            }
+            const genderPref = localStorage.getItem('muse_gender_pref') || 'male';
+            updateGenderPreference(genderPref);
+        });
+    </script>
+</body>
+</html>
