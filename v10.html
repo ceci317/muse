@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Muse | 她的情欲画廊</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        muse: {
+                            black: '#050505',
+                            dark: '#0a0a0a',
+                            panel: '#121212',
+                            rose: '#e11d48', 
+                            gold: '#e5e5e5',
+                            dim: '#525252',
+                        }
+                    },
+                    fontFamily: {
+                        serif: ['"Playfair Display"', 'serif'],
+                        sans: ['"Lato"', 'sans-serif'],
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 1.5s ease-out forwards',
+                        'shimmer': 'shimmer 2s linear infinite',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: 0, transform: 'translateY(20px)' },
+                            '100%': { opacity: 1, transform: 'translateY(0)' },
+                        },
+                        shimmer: {
+                            '0%': { backgroundPosition: '-200% 0' },
+                            '100%': { backgroundPosition: '200% 0' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* === Background Slideshow === */
+        .hero-slideshow {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 0;
+            overflow: hidden;
+        }
+        .slide-image {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            object-fit: cover;
+            opacity: 0;
+            transition: opacity 3s ease-in-out, transform 10s ease-out; 
+            filter: contrast(1.1) brightness(0.7) saturate(1.1);
+            transform: scale(1.05);
+        }
+        .slide-image.active {
+            opacity: 0.6; 
+            transform: scale(1);
+        }
+
+        /* === Typography & Effects === */
+        .flow-text-container {
+            position: relative;
+            filter: url(#flow-filter);
+            mix-blend-mode: overlay;
+        }
+        
+        .flow-text-layer {
+            font-family: "Playfair Display", serif; 
+            color: rgba(255, 255, 255, 0.95);
+            text-shadow: 0 0 40px rgba(225, 29, 72, 0.5); 
+            letter-spacing: 0.15em;
+        }
+
+        /* Glass & Utils */
+        .glass-panel { background: rgba(20, 20, 20, 0.4); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .card-inner { transition: transform 0.8s; transform-style: preserve-3d; }
+        .card-front, .card-back { backface-visibility: hidden; }
+        .card-back { transform: rotateY(180deg); }
+        .flipped .card-inner { transform: rotateY(180deg); }
+        .magic-btn { background: linear-gradient(90deg, rgba(225,29,72,0) 0%, rgba(225,29,72,0.2) 50%, rgba(225,29,72,0) 100%); background-size: 200% 100%; }
+        .selected-option { background: rgba(225, 29, 72, 0.15); border-color: #e11d48; color: #e5e5e5; }
+        
+        /* Provider Toggle */
+        .provider-btn.active { background-color: rgba(225, 29, 72, 0.2); border-color: #e11d48; color: white; }
+    </style>
+</head>
+<body class="bg-muse-black text-muse-gold font-sans antialiased overflow-hidden selection:bg-muse-rose selection:text-white">
+
+    <svg style="display: none;">
+        <defs>
+            <filter id="flow-filter">
+                <feTurbulence type="fractalNoise" baseFrequency="0.01" numOctaves="1" result="noise" seed="0">
+                    <animate attributeName="baseFrequency" dur="15s" values="0.01;0.005;0.01" repeatCount="indefinite" />
+                </feTurbulence>
+                <feDisplacementMap in="SourceGraphic" in2="noise" scale="8" /> 
+            </filter>
+        </defs>
+    </svg>
+
+    <!-- 1. HERO SECTION -->
+    <section id="landing-page" class="relative w-full h-screen overflow-hidden flex flex-col items-center justify-center z-50 bg-muse-black">
+        
+        <div class="hero-slideshow" id="slideshow-container">
+            <div class="absolute inset-0 bg-gradient-to-b from-muse-black/40 via-transparent to-muse-black/90 z-10"></div>
+            <div class="absolute inset-0 opacity-[0.08] z-10" style="background-image: url('https://grainy-gradients.vercel.app/noise.svg');"></div>
+        </div>
+
+        <div class="relative z-20 text-center px-6 flex flex-col items-center">
+            <div class="flow-text-container mb-8 animate-fade-in">
+                <h1 class="flow-text-layer text-8xl md:text-[11rem] font-black leading-none select-none">
+                    MUSE
+                </h1>
+            </div>
+
+            <p class="font-serif italic text-white/70 text-lg md:text-xl mb-12 animate-fade-in mix-blend-screen" style="animation-delay: 0.3s;">
+                Your Narrative. Your Pleasure.
+            </p>
+            
+            <div class="animate-fade-in" style="animation-delay: 0.6s;">
+                <button onclick="enterPrism()" class="group relative px-12 py-4 overflow-hidden rounded-full border border-white/20 hover:border-muse-rose transition-all duration-500 bg-white/5 backdrop-blur-md">
+                    <div class="absolute inset-0 w-0 bg-muse-rose/40 transition-all duration-500 ease-out group-hover:w-full"></div>
+                    <span class="relative font-serif text-sm tracking-[0.25em] text-white group-hover:text-white transition-colors duration-300 uppercase">
+                        今晚你也睡不着吗？
+                    </span>
+                </button>
+            </div>
+        </div>
+
+        <div class="absolute bottom-10 text-white/20 text-[10px] tracking-[0.5em] animate-fade-in z-20" style="animation-delay: 1s;">
+            SCROLL TO ENTER
+        </div>
+    </section>
+
+    <!-- 2. The Prism (Quiz) -->
+    <section id="prism-modal" class="fixed inset-0 z-[60] hidden bg-muse-black/95 backdrop-blur-xl flex items-center justify-center p-6 transition-opacity duration-500">
+        <div class="max-w-xl w-full">
+            <div class="mb-8 flex justify-between items-end border-b border-white/10 pb-4">
+                <h2 class="font-serif text-3xl text-muse-gold">The Prism</h2>
+                <span class="text-xs text-muse-dim tracking-widest" id="prism-step-indicator">STEP 1 / 3</span>
+            </div>
+            <div id="question-container" class="min-h-[300px] flex flex-col justify-center animate-fade-in"></div>
+            
+            <div class="flex justify-between mt-8">
+                <button onclick="prevQuestion()" id="prev-btn" class="text-muse-dim hover:text-white text-xs tracking-widest invisible flex items-center gap-2">
+                    <span>←</span> BACK
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- 3. Main Dashboard -->
+    <main id="main-content" class="fixed inset-0 top-0 w-full h-screen hidden flex-col md:flex-row z-40 bg-muse-black transition-opacity duration-1000 opacity-0">
+        
+        <div class="absolute top-6 right-6 z-50 flex gap-4 items-center">
+            <button onclick="openOracle()" class="group flex items-center gap-2 text-xs text-muse-gold hover:text-white tracking-widest transition px-3 py-1 rounded-full border border-muse-gold/20 hover:border-muse-rose/50 bg-black/20 backdrop-blur-sm">
+                <span class="text-lg group-hover:animate-pulse">🔮</span> THE ORACLE
+            </button>
+            <button onclick="openPrism()" class="text-xs text-muse-dim hover:text-white tracking-widest transition">PROFILE</button>
+            <button onclick="openApiKeySettings()" class="text-xs text-muse-dim hover:text-white tracking-widest transition">API SETTINGS</button>
+        </div>
+
+        <!-- Left: AI Solo Fantasy -->
+        <div class="relative w-full md:w-5/12 h-1/2 md:h-full border-b md:border-b-0 md:border-r border-white/5 flex flex-col bg-muse-panel">
+            <div class="absolute inset-0 overflow-hidden">
+                <div class="absolute -top-[20%] -left-[20%] w-[150%] h-[150%] bg-[url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1000&auto=format&fit=crop')] bg-cover opacity-10 blur-sm mix-blend-overlay"></div>
+                <div class="absolute inset-0 bg-gradient-to-t from-muse-panel via-muse-panel/90 to-transparent"></div>
+            </div>
+            <div class="relative z-10 flex-1 flex flex-col p-8 md:p-12 justify-center">
+                <span class="text-muse-rose/80 text-[10px] tracking-[0.3em] uppercase mb-3 flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-muse-rose animate-pulse"></span>Solo Fantasy
+                </span>
+                <h2 class="font-serif text-3xl md:text-4xl text-muse-gold mb-6">幻想编剧</h2>
+                <p class="text-muse-dim text-sm mb-8 font-light leading-relaxed max-w-sm">
+                    不需要具体的对象，只需要一个瞬间。<br>输入一个关键词，Muse 为你生成一段关于声音、气味与触觉的私密独白。
+                </p>
+                <div class="space-y-4">
+                    <input type="text" id="script-prompt" placeholder="例如：淡淡的烟草味、被雨淋湿的衬衫..." class="w-full bg-black/30 border border-white/10 rounded-lg p-4 text-muse-gold placeholder-muse-dim focus:outline-none focus:border-muse-rose transition backdrop-blur-sm text-sm">
+                    <button onclick="generateScript()" id="script-btn" class="w-full py-3 bg-white/5 hover:bg-muse-rose text-white text-xs tracking-[0.2em] rounded-lg transition duration-500 border border-white/5 hover:border-transparent">GENERATE</button>
+                    <div id="script-result" class="hidden mt-6 p-6 border-l border-muse-rose/30 bg-white/5 rounded-r-lg text-muse-gold/90 text-sm font-serif leading-loose italic max-h-[30vh] overflow-y-auto no-scrollbar animate-fade-in"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Interactive Story -->
+        <div class="relative w-full md:w-7/12 h-1/2 md:h-full flex flex-col bg-muse-black">
+            <!-- Scenario Selector -->
+            <div id="scenario-selector" class="flex-1 p-8 md:p-12 overflow-y-auto no-scrollbar">
+                <div class="mb-8">
+                    <span class="text-muse-rose/80 text-[10px] tracking-[0.3em] uppercase mb-3 block">Interactive Roleplay</span>
+                    <h2 class="font-serif text-3xl md:text-4xl text-muse-gold">选择你的场景</h2>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div onclick="startStory('elevator')" class="group relative h-48 rounded-lg overflow-hidden cursor-pointer border border-white/5 hover:border-muse-rose/50 transition-all duration-500">
+                        <img src="https://images.unsplash.com/photo-1583324113626-70df0f4deaab?q=80&w=600&auto=format&fit=crop" class="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:scale-105 transition duration-700 grayscale group-hover:grayscale-0">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent"></div>
+                        <div class="absolute bottom-4 left-4">
+                            <h3 class="font-serif text-xl text-white mb-1 group-hover:text-muse-rose transition">私人电梯</h3>
+                            <p class="text-[10px] text-muse-dim uppercase tracking-widest">Tension · Confined</p>
+                        </div>
+                    </div>
+                    <div onclick="startStory('office')" class="group relative h-48 rounded-lg overflow-hidden cursor-pointer border border-white/5 hover:border-muse-rose/50 transition-all duration-500">
+                        <img src="https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=600&auto=format&fit=crop" class="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:scale-105 transition duration-700 grayscale group-hover:grayscale-0">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent"></div>
+                        <div class="absolute bottom-4 left-4">
+                            <h3 class="font-serif text-xl text-white mb-1 group-hover:text-muse-rose transition">深夜办公室</h3>
+                            <p class="text-[10px] text-muse-dim uppercase tracking-widest">Power · Taboo</p>
+                        </div>
+                    </div>
+                    <div onclick="startStory('library')" class="group relative h-48 rounded-lg overflow-hidden cursor-pointer border border-white/5 hover:border-muse-rose/50 transition-all duration-500">
+                        <img src="https://images.unsplash.com/photo-1507842217343-583bb7270b66?q=80&w=600&auto=format&fit=crop" class="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:scale-105 transition duration-700 grayscale group-hover:grayscale-0">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent"></div>
+                        <div class="absolute bottom-4 left-4">
+                            <h3 class="font-serif text-xl text-white mb-1 group-hover:text-muse-rose transition">禁忌图书馆</h3>
+                            <p class="text-[10px] text-muse-dim uppercase tracking-widest">Quiet · Secret</p>
+                        </div>
+                    </div>
+                    <div onclick="startStory('car')" class="group relative h-48 rounded-lg overflow-hidden cursor-pointer border border-white/5 hover:border-muse-rose/50 transition-all duration-500">
+                        <img src="https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?q=80&w=600&auto=format&fit=crop" class="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:scale-105 transition duration-700 grayscale group-hover:grayscale-0">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent"></div>
+                        <div class="absolute bottom-4 left-4">
+                            <h3 class="font-serif text-xl text-white mb-1 group-hover:text-muse-rose transition">暴雨车内</h3>
+                            <p class="text-[10px] text-muse-dim uppercase tracking-widest">Intimate · Sound</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Interface -->
+            <div id="chat-interface" class="hidden flex-col h-full relative bg-muse-black">
+                <div class="p-4 border-b border-white/5 flex justify-between items-center bg-muse-panel/50 backdrop-blur-sm">
+                    <div class="flex items-center gap-3">
+                        <button onclick="exitStory()" class="text-muse-dim hover:text-white transition"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg></button>
+                        <div>
+                            <h3 class="font-serif text-lg text-white" id="chat-title">Story Title</h3>
+                            <p class="text-[10px] text-muse-dim uppercase tracking-widest">Interactive Mode</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="hearThoughts()" class="flex items-center gap-1 text-[10px] text-muse-dim hover:text-muse-rose border border-white/10 hover:border-muse-rose/50 rounded px-2 py-1 transition" title="窥探他的心声">
+                            <span>✨</span> 窥探心声
+                        </button>
+                        <div class="text-[10px] text-muse-dim px-2 py-1 border border-white/10 rounded" id="user-pref-badge">HETERO</div>
+                    </div>
+                </div>
+                <div id="chat-history" class="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar"></div>
+                <div class="p-4 bg-muse-black border-t border-white/5">
+                    <div class="relative max-w-2xl mx-auto">
+                        <input type="text" id="story-input" placeholder="描述你的动作或言语..." class="w-full bg-white/5 border border-white/10 rounded-full pl-6 pr-12 py-3 text-sm text-muse-gold focus:outline-none focus:border-muse-rose focus:bg-white/10 transition" onkeypress="if(event.key==='Enter') continueStory()">
+                        <button onclick="continueStory()" class="absolute right-2 top-2 p-1.5 text-muse-dim hover:text-muse-rose transition bg-white/5 rounded-full hover:bg-white/10"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7"></path></svg></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Oracle Modal -->
+    <div id="oracle-modal" class="fixed inset-0 z-[80] hidden bg-black/95 backdrop-blur-xl flex items-center justify-center p-6">
+        <div class="max-w-md w-full text-center">
+            <h3 class="font-serif text-3xl text-muse-gold mb-2">The Oracle</h3>
+            <p class="text-xs text-muse-dim tracking-widest mb-8">让 Gemini 窥探你的潜意识...</p>
+            <div id="oracle-card-container" class="relative w-64 h-96 mx-auto mb-8 cursor-pointer perspective-1000 hidden" onclick="flipCard()">
+                <div class="card-inner relative w-full h-full shadow-2xl transition-transform duration-700 transform-style-3d">
+                    <div class="card-front absolute inset-0 bg-muse-panel border border-muse-rose/30 rounded-xl flex flex-col items-center justify-center p-6 backface-hidden rotate-y-180" style="transform: rotateY(180deg);">
+                        <div class="text-6xl mb-4" id="oracle-icon">🔮</div>
+                        <h4 class="font-serif text-xl text-muse-rose mb-4" id="oracle-title">...</h4>
+                        <p class="text-sm text-muse-gold/80 italic leading-relaxed" id="oracle-desc">...</p>
+                    </div>
+                    <div class="card-back absolute inset-0 bg-gradient-to-br from-stone-900 to-black border border-white/10 rounded-xl flex items-center justify-center backface-hidden">
+                        <div class="text-muse-dim/20 text-6xl font-serif">M</div>
+                        <div class="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
+                    </div>
+                </div>
+            </div>
+            <div id="oracle-controls">
+                <button onclick="consultOracle()" id="oracle-btn" class="magic-btn animate-shimmer text-white px-8 py-3 rounded-full text-xs tracking-[0.2em] transition border border-white/10 hover:border-muse-rose">抽一张牌</button>
+            </div>
+            <button onclick="closeOracle()" class="mt-8 text-xs text-muse-dim hover:text-white underline">离开</button>
+        </div>
+    </div>
+
+    <!-- API Key Modal (Updated for Multi-Provider) -->
+    <div id="apikey-modal" class="fixed inset-0 z-[70] hidden bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="glass-panel max-w-md w-full p-8 rounded-lg">
+            <h3 class="font-serif text-xl text-muse-gold mb-2">AI Settings</h3>
+            <p class="text-xs text-muse-dim mb-6">选择你的灵感引擎</p>
+            
+            <!-- Provider Toggle -->
+            <div class="flex p-1 bg-white/5 rounded-lg mb-6">
+                <button onclick="switchProvider('gemini')" id="btn-gemini" class="provider-btn flex-1 py-2 text-xs tracking-widest rounded transition-all text-muse-dim hover:text-white active">
+                    GOOGLE GEMINI
+                </button>
+                <button onclick="switchProvider('dashscope')" id="btn-dashscope" class="provider-btn flex-1 py-2 text-xs tracking-widest rounded transition-all text-muse-dim hover:text-white">
+                    ALIYUN DASHSCOPE
+                </button>
+            </div>
+
+            <!-- Gemini Input -->
+            <div id="input-group-gemini" class="space-y-2">
+                <label class="text-[10px] text-muse-dim uppercase tracking-widest">Gemini API Key</label>
+                <input type="password" id="gemini-key-input" placeholder="Start with AI..." class="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-muse-gold focus:border-muse-rose focus:outline-none text-sm transition-colors">
+                <div class="text-right"><a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-[10px] text-muse-dim underline hover:text-muse-rose">Get Gemini Key</a></div>
+            </div>
+
+            <!-- DashScope Input -->
+            <div id="input-group-dashscope" class="space-y-2 hidden">
+                <label class="text-[10px] text-muse-dim uppercase tracking-widest">DashScope API Key</label>
+                <input type="password" id="dashscope-key-input" placeholder="sk-..." class="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-muse-gold focus:border-muse-rose focus:outline-none text-sm transition-colors">
+                <div class="text-right"><a href="https://bailian.console.aliyun.com/" target="_blank" class="text-[10px] text-muse-dim underline hover:text-muse-rose">Get DashScope Key</a></div>
+            </div>
+
+            <div class="flex gap-3 mt-8">
+                <button onclick="saveApiSettings()" class="flex-1 bg-muse-rose hover:bg-muse-rose/80 text-white py-2 rounded-lg transition text-xs tracking-widest">SAVE & CONNECT</button>
+                <button onclick="document.getElementById('apikey-modal').classList.add('hidden')" class="flex-1 border border-white/10 text-muse-dim py-2 rounded-lg hover:text-white transition text-xs tracking-widest">CANCEL</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========== 1. Dynamic Slideshow Logic ==========
+        const backgroundImages = [
+            "https://images.unsplash.com/photo-1605810230434-7631ac76ec81?q=80&w=1920&auto=format&fit=crop", 
+            "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=1920&auto=format&fit=crop",     
+            "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1920&auto=format&fit=crop",     
+            "https://images.unsplash.com/photo-1504333638930-c8787321eee0?q=80&w=1920&auto=format&fit=crop"      
+        ];
+
+        let currentSlide = 0;
+
+        function initSlideshow() {
+            const container = document.getElementById('slideshow-container');
+            
+            // 预加载并创建 DOM 元素
+            backgroundImages.forEach((src, index) => {
+                const img = document.createElement('img');
+                img.src = src;
+                img.className = `slide-image ${index === 0 ? 'active' : ''}`;
+                container.prepend(img); // Prepend to be behind the overlays
+            });
+
+            // 启动定时器
+            setInterval(() => {
+                const images = document.querySelectorAll('.slide-image');
+                images[currentSlide].classList.remove('active');
+                
+                currentSlide = (currentSlide + 1) % backgroundImages.length;
+                
+                images[currentSlide].classList.add('active');
+            }, 6000); // 每 6 秒切换一次
+        }
+
+        document.addEventListener('DOMContentLoaded', initSlideshow);
+
+
+        // ========== 2. The Prism (Quiz Logic - Updated Auto Advance) ==========
+        const quizData = [
+            { id: 'orientation', question: "你的心，被什么吸引？", options: [{ label: "男性 (Hetero)", value: "hetero_male", desc: "渴望男性的张力与体温" }, { label: "女性 (Lesbian/GL)", value: "lesbian", desc: "沉溺于女性的细腻与柔美" }, { label: "Dom/四爱 (Femdom)", value: "femdom", desc: "享受掌控与主导的快感" }, { label: "不被定义 (Fluid)", value: "fluid", desc: "灵魂的共鸣高于性别" }] },
+            { id: 'atmosphere', question: "你偏爱怎样的氛围？", options: [{ label: "暧昧拉扯", value: "tension", desc: "若即若离，眼神交汇" }, { label: "禁忌刺激", value: "taboo", desc: "背德感与危险的边缘" }, { label: "温柔治愈", value: "gentle", desc: "缓慢的拥抱与低语" }, { label: "绝对服从", value: "submission", desc: "权力的让渡与接管" }] },
+            { id: 'style', question: "你希望的剧本风格？", options: [{ label: "唯美含蓄", value: "poetic", desc: "注重五感描写，留有想象空间" }, { label: "直白炽热", value: "intense", desc: "更直接的感官刺激与描写" }] }
+        ];
+        let currentStep = 0;
+        let userProfile = {};
+
+        function enterPrism() { 
+            const landing = document.getElementById('landing-page');
+            landing.style.transition = 'opacity 1s';
+            landing.style.opacity = '0';
+            setTimeout(() => {
+                landing.style.display = 'none';
+                document.getElementById('prism-modal').classList.remove('hidden');
+                renderQuestion();
+            }, 1000);
+        }
+        function openPrism() { document.getElementById('main-content').classList.remove('flex'); document.getElementById('main-content').classList.add('hidden'); document.getElementById('prism-modal').classList.remove('hidden'); currentStep = 0; renderQuestion(); }
+        
+        function renderQuestion() {
+            const q = quizData[currentStep];
+            const container = document.getElementById('question-container');
+            document.getElementById('prism-step-indicator').innerText = `STEP ${currentStep + 1} / ${quizData.length}`;
+            let html = `<h3 class="text-2xl font-serif text-white mb-8 animate-fade-in">${q.question}</h3><div class="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">`;
+            q.options.forEach(opt => {
+                const isSelected = userProfile[q.id] === opt.value;
+                html += `<div onclick="selectOption('${q.id}', '${opt.value}')" class="cursor-pointer border border-white/10 rounded-lg p-4 transition-all hover:bg-white/5 hover:border-muse-rose/50 ${isSelected ? 'selected-option' : ''}"><div class="font-serif text-lg mb-1">${opt.label}</div><div class="text-xs text-muse-dim">${opt.desc}</div></div>`;
+            });
+            container.innerHTML = html + `</div>`;
+            
+            // Back Button Visibility
+            document.getElementById('prev-btn').style.visibility = currentStep > 0 ? 'visible' : 'hidden';
+        }
+
+        function selectOption(key, value) { 
+            userProfile[key] = value; 
+            renderQuestion(); // Re-render to show selection highlight
+            
+            // Auto Advance with a slight delay for visual feedback
+            setTimeout(() => {
+                nextQuestion();
+            }, 400); 
+        }
+
+        function prevQuestion() { if(currentStep>0) { currentStep--; renderQuestion(); } }
+        function nextQuestion() { if(currentStep<quizData.length-1) { currentStep++; renderQuestion(); } else finishPrism(); }
+        function finishPrism() {
+            localStorage.setItem('muse_profile', JSON.stringify(userProfile));
+            document.getElementById('prism-modal').classList.add('hidden');
+            const main = document.getElementById('main-content');
+            main.classList.remove('hidden'); main.classList.add('flex');
+            setTimeout(() => main.classList.remove('opacity-0'), 50);
+            document.getElementById('user-pref-badge').innerText = userProfile.orientation.toUpperCase();
+        }
+
+        // ========== 3. Dual AI Logic (Gemini & DashScope) ==========
+        let activeProvider = localStorage.getItem('muse_ai_provider') || 'gemini';
+
+        function switchProvider(provider) {
+            activeProvider = provider;
+            // UI Toggle
+            document.querySelectorAll('.provider-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`btn-${provider}`).classList.add('active');
+            
+            // Show inputs
+            document.getElementById('input-group-gemini').classList.add('hidden');
+            document.getElementById('input-group-dashscope').classList.add('hidden');
+            document.getElementById(`input-group-${provider}`).classList.remove('hidden');
+        }
+
+        function getApiKey(provider = activeProvider) {
+            if (provider === 'gemini') return localStorage.getItem('muse_gemini_apikey');
+            if (provider === 'dashscope') return localStorage.getItem('muse_dashscope_apikey');
+            return null;
+        }
+
+        function saveApiSettings() {
+            const geminiKey = document.getElementById('gemini-key-input').value.trim();
+            const dashKey = document.getElementById('dashscope-key-input').value.trim();
+            
+            if (geminiKey) localStorage.setItem('muse_gemini_apikey', geminiKey);
+            if (dashKey) localStorage.setItem('muse_dashscope_apikey', dashKey);
+            
+            localStorage.setItem('muse_ai_provider', activeProvider);
+            
+            document.getElementById('apikey-modal').classList.add('hidden');
+            if(window.pendingAction) window.pendingAction();
+        }
+
+        function openApiKeySettings() {
+            // Load saved state
+            const savedProvider = localStorage.getItem('muse_ai_provider') || 'gemini';
+            switchProvider(savedProvider);
+            
+            document.getElementById('gemini-key-input').value = localStorage.getItem('muse_gemini_apikey') || '';
+            document.getElementById('dashscope-key-input').value = localStorage.getItem('muse_dashscope_apikey') || '';
+            
+            document.getElementById('apikey-modal').classList.remove('hidden');
+        }
+
+        function requireApiKey(cb) {
+            if(!getApiKey()){
+                window.pendingAction = cb;
+                openApiKeySettings();
+                return false;
+            }
+            return true;
+        }
+
+        function getSystemPrompt(type) {
+            const p = userProfile;
+            let persona = "";
+            if (p.orientation === 'hetero_male') persona = "互动对象：具有性张力的男性。";
+            else if (p.orientation === 'lesbian') persona = "互动对象：细腻、柔美的女性。";
+            else if (p.orientation === 'femdom') persona = "互动对象：顺从的男性（M属性）。";
+            else persona = "互动对象：性别模糊，灵魂共鸣。";
+
+            if (p.atmosphere === 'taboo') persona += " 氛围：禁忌、危险。";
+            else if (p.atmosphere === 'gentle') persona += " 氛围：温柔、治愈。";
+            else if (p.atmosphere === 'submission') persona += " 氛围：权力交换、掌控。";
+            else persona += " 氛围：暧昧拉扯。";
+
+            return `你是一个女性向情色文学助手。${persona} 
+            请通过五感描写构建沉浸感。
+            对于"互动故事"，请以第二人称（你）进行沉浸式角色扮演。
+            禁止生成非法、未成年、暴力血腥内容。`;
+        }
+
+        // --- Core AI Call Function ---
+        async function callAI(prompt, systemPrompt, jsonMode = false) {
+            if (activeProvider === 'dashscope') {
+                return await callDashScope(prompt, systemPrompt, jsonMode);
+            } else {
+                return await callGemini(prompt, systemPrompt, jsonMode);
+            }
+        }
+
+        // Gemini Implementation
+        async function callGemini(prompt, systemPrompt, jsonMode) {
+            const apiKey = getApiKey('gemini');
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            const payload = { contents: [{parts: [{text: prompt}]}], systemInstruction: {parts: [{text: systemPrompt}]} };
+            if(jsonMode) payload.generationConfig = { responseMimeType: "application/json" };
+
+            try {
+                const res = await fetch(url, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+                const data = await res.json();
+                return data.candidates?.[0]?.content?.parts?.[0]?.text || "Muse 暂时失联...";
+            } catch(e) { console.error(e); return "网络连接错误 (Gemini)"; }
+        }
+
+        // DashScope Implementation (OpenAI Compatible)
+        async function callDashScope(prompt, systemPrompt, jsonMode) {
+            const apiKey = getApiKey('dashscope');
+            const url = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
+            
+            // Build messages array
+            const messages = [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: prompt }
+            ];
+
+            const payload = {
+                model: "qwen-plus",
+                messages: messages,
+            };
+            
+            // DashScope doesn't strictly support response_format: "json_object" in the same way for all models, 
+            // but prompt engineering usually works. We'll rely on the prompt.
+
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!res.ok) {
+                    const err = await res.json();
+                    console.error("DashScope Error:", err);
+                    return `API Error: ${err.message || res.status}`;
+                }
+
+                const data = await res.json();
+                return data.choices?.[0]?.message?.content || "Muse 暂时失联...";
+            } catch(e) {
+                console.error(e);
+                return "网络连接错误 (DashScope)";
+            }
+        }
+
+        async function generateScript() {
+            if(!requireApiKey(generateScript)) return;
+            const input = document.getElementById('script-prompt');
+            const btn = document.getElementById('script-btn');
+            const resDiv = document.getElementById('script-result');
+            if(!input.value) return;
+            btn.innerText = "WRITING..."; btn.disabled = true;
+            resDiv.classList.remove('hidden'); resDiv.innerHTML = '<span class="animate-pulse">正在编织梦境...</span>';
+            const system = getSystemPrompt('script') + " 任务：根据关键词生成一段100字左右的独白。";
+            
+            // Use Unified Call
+            const text = await callAI(input.value, system);
+            
+            resDiv.innerHTML = marked.parse(text); btn.innerText = "GENERATE"; btn.disabled = false;
+        }
+
+        let storyContext = "";
+        function startStory(scenario) {
+            const selector = document.getElementById('scenario-selector');
+            const ui = document.getElementById('chat-interface');
+            const title = document.getElementById('chat-title');
+            const history = document.getElementById('chat-history');
+            selector.classList.add('hidden'); ui.classList.remove('hidden'); ui.classList.add('flex'); history.innerHTML = ''; 
+            const p = userProfile;
+            let intro = "", target = p.orientation === 'lesbian' ? '她' : '他';
+            if (scenario === 'elevator') {
+                title.innerText = "私人电梯"; storyContext = "场景：故障电梯。";
+                intro = p.orientation === 'femdom' ? `电梯故障。${target}跪在角落，抬头看你，眼神充满渴望。"主人..."` : `电梯灯光闪烁，${target}松开领带，眼神深邃地看着你。`;
+            } else if (scenario === 'office') {
+                title.innerText = "深夜办公室"; storyContext = "场景：深夜办公室。";
+                intro = `大家都下班了。${target}走进你的办公室，反手锁门。"还在忙吗？"`;
+            } else if (scenario === 'library') {
+                title.innerText = "禁忌图书馆"; storyContext = "场景：图书馆死角。";
+                intro = `书架深处，${target}的手指划过书脊，停在你手背上。`;
+            } else if (scenario === 'car') {
+                title.innerText = "暴雨车内"; storyContext = "场景：暴雨车内。";
+                intro = `雨声很大，车窗全是雾气。${target}调低座椅，侧身看你。`;
+            }
+            addBubble(intro, 'ai');
+        }
+        function exitStory() { document.getElementById('chat-interface').classList.remove('flex'); document.getElementById('chat-interface').classList.add('hidden'); document.getElementById('scenario-selector').classList.remove('hidden'); }
+        async function continueStory() {
+            if(!requireApiKey(continueStory)) return;
+            const input = document.getElementById('story-input');
+            const val = input.value.trim();
+            if(!val) return;
+            addBubble(val, 'user'); input.value = '';
+            const loadingId = addBubble('...', 'ai', true);
+            const system = getSystemPrompt('story');
+            const fullPrompt = `当前剧情：${storyContext}\n上文：...\n用户行动：${val}\n请以第二人称（你）续写剧情。`;
+            
+            // Use Unified Call
+            const reply = await callAI(fullPrompt, system);
+            
+            document.getElementById(loadingId).remove();
+            addBubble(reply, 'ai');
+            storyContext += `\n用户：${val}\nAI：${reply}`;
+        }
+        function addBubble(text, role, isLoading=false) {
+            const history = document.getElementById('chat-history');
+            const div = document.createElement('div');
+            div.className = role === 'user' ? 'text-right' : 'text-left';
+            div.id = 'msg-' + Date.now();
+            const bubble = document.createElement('div');
+            bubble.className = `inline-block max-w-[85%] px-5 py-3 rounded-2xl text-sm leading-relaxed ${role === 'user' ? 'bg-muse-rose/20 text-white border border-muse-rose/30 rounded-br-none' : 'bg-white/10 text-muse-gold border border-white/5 rounded-bl-none font-serif'}`;
+            if(isLoading) bubble.classList.add('animate-pulse');
+            bubble.innerHTML = isLoading ? text : marked.parse(text);
+            div.appendChild(bubble); history.appendChild(div); history.scrollTop = history.scrollHeight;
+            return div.id;
+        }
+
+        async function hearThoughts() {
+            if(!requireApiKey(hearThoughts)) return;
+            if(!storyContext) { alert("请先开始一个故事"); return; }
+            const loadingId = addBubble('✨ 正在窥探...', 'ai', true);
+            const system = getSystemPrompt('story');
+            const prompt = `基于此剧情：${storyContext}\n\n请生成一段角色的"内心独白"（Mind Voice）。这是他/她没有说出口，但内心极度渴望、压抑或对"你"的真实欲望。内容要简短、有力、充满张力。用括号（）包裹。`;
+            
+            // Use Unified Call
+            const thoughts = await callAI(prompt, system);
+            
+            document.getElementById(loadingId).remove();
+            const history = document.getElementById('chat-history');
+            const div = document.createElement('div');
+            div.className = 'text-center my-4';
+            div.innerHTML = `<div class="inline-block px-4 py-2 bg-muse-dim/20 border border-muse-dim/40 rounded-lg text-xs text-muse-gold/70 italic tracking-widest animate-pulse">${marked.parse(thoughts)}</div>`;
+            history.appendChild(div); history.scrollTop = history.scrollHeight;
+        }
+
+        function openOracle() { document.getElementById('oracle-modal').classList.remove('hidden'); document.getElementById('oracle-card-container').classList.add('hidden'); document.getElementById('oracle-controls').classList.remove('hidden'); }
+        function closeOracle() { document.getElementById('oracle-modal').classList.add('hidden'); resetCard(); }
+        function resetCard() { const card = document.querySelector('.card-inner'); if(card) { card.style.transform = ''; card.classList.remove('flipped'); } }
+        function flipCard() { const card = document.querySelector('.card-inner'); card.classList.toggle('flipped'); card.style.transform = card.classList.contains('flipped') ? 'rotateY(180deg)' : ''; }
+        async function consultOracle() {
+            if(!requireApiKey(consultOracle)) return;
+            const btn = document.getElementById('oracle-btn');
+            btn.innerText = "COMMUNING..."; btn.disabled = true;
+            const system = "You are a mystical Oracle. Based on the user's profile, create a metaphorical 'Tarot Card' for them. Output JSON: { \"title\": \"Card Name (Chinese)\", \"icon\": \"Emoji\", \"desc\": \"Short poetic interpretation (Chinese)\" }";
+            const prompt = `User Profile: ${JSON.stringify(userProfile)}. Draw a card representing their current hidden desire.`;
+            try {
+                // Use Unified Call with jsonMode (handled via prompt for DashScope mostly)
+                const text = await callAI(prompt, system, true); 
+                if (text.startsWith("Muse") || text.startsWith("网络") || text.startsWith("API")) throw new Error("API Request Failed");
+                const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+                const data = JSON.parse(cleanText);
+                document.getElementById('oracle-title').innerText = data.title;
+                document.getElementById('oracle-icon').innerText = data.icon;
+                document.getElementById('oracle-desc').innerText = data.desc;
+                document.getElementById('oracle-controls').classList.add('hidden');
+                document.getElementById('oracle-card-container').classList.remove('hidden');
+                setTimeout(flipCard, 500);
+            } catch(e) { console.error(e); alert("The stars are silent. (Check your API Key)"); }
+            finally { btn.innerText = "抽一张牌"; btn.disabled = false; }
+        }
+
+        window.addEventListener('load', () => {
+            const savedProfile = localStorage.getItem('muse_profile');
+            if(savedProfile) userProfile = JSON.parse(savedProfile);
+        });
+    </script>
+</body>
+</html>

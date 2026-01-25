@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Muse | 她的情欲画廊</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        muse: {
+                            dark: '#0a0a0a', // 更深邃的黑
+                            panel: '#171717',
+                            rose: '#be123c', //稍微提亮一点红，增加危险感
+                            gold: '#e5e5e5',
+                            dim: '#525252',
+                        }
+                    },
+                    fontFamily: {
+                        serif: ['"Playfair Display"', 'serif'],
+                        sans: ['"Lato"', 'sans-serif'],
+                    },
+                    animation: {
+                        'float': 'float 10s ease-in-out infinite',
+                        'breathe': 'breathe 6s ease-in-out infinite',
+                        'fade-in-up': 'fadeInUp 1s ease-out forwards',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'scale(1.05) translate(0, 0)' },
+                            '50%': { transform: 'scale(1.1) translate(-1%, -1%)' },
+                        },
+                        breathe: {
+                            '0%, 100%': { opacity: 0.6 },
+                            '50%': { opacity: 0.9 },
+                        },
+                        fadeInUp: {
+                            '0%': { opacity: 0, transform: 'translateY(20px)' },
+                            '100%': { opacity: 1, transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* 隐藏滚动条但保留功能 */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* 朦胧遮罩 */
+        .haze-overlay {
+            background: radial-gradient(circle at center, transparent 0%, #0a0a0a 90%);
+        }
+        
+        /* 输入框聚焦时的光晕 */
+        .glow-focus:focus {
+            box-shadow: 0 0 15px rgba(190, 18, 60, 0.3);
+        }
+    </style>
+</head>
+<body class="bg-muse-dark text-muse-gold font-sans antialiased overflow-hidden">
+
+    <section id="landing-page" class="relative w-full h-screen flex flex-col items-center justify-center overflow-hidden transition-transform duration-1000 ease-in-out z-50">
+        
+        <div class="absolute inset-0 z-0">
+            <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=1920&auto=format&fit=crop" 
+                 class="w-full h-full object-cover opacity-40 blur-sm animate-float grayscale brightness-75">
+            <div class="absolute inset-0 bg-black/60"></div>
+            <div class="absolute inset-0 opacity-[0.08]" style="background-image: url('https://grainy-gradients.vercel.app/noise.svg');"></div>
+        </div>
+
+        <div class="relative z-10 text-center px-6 animate-fade-in-up">
+            <h1 class="font-serif text-6xl md:text-8xl tracking-widest text-muse-gold mb-2">MUSE</h1>
+            <p class="font-serif italic text-muse-dim text-lg md:text-xl mb-12">Your Narrative. Your Pleasure.</p>
+            
+            <button onclick="enterMuse()" class="group relative px-8 py-4 bg-transparent overflow-hidden rounded-full border border-muse-dim/50 hover:border-muse-rose transition-all duration-700">
+                <div class="absolute inset-0 w-0 bg-muse-rose transition-all duration-[250ms] ease-out group-hover:w-full opacity-10"></div>
+                <span class="relative font-serif text-sm tracking-[0.2em] text-muse-gold group-hover:text-white transition-colors duration-300">
+                    今晚你也睡不着吗？
+                </span>
+            </button>
+        </div>
+
+        <div class="absolute bottom-10 text-muse-dim text-[10px] tracking-widest opacity-50">
+            SCROLL TO EXPLORE
+        </div>
+    </section>
+
+    <main id="main-content" class="fixed inset-0 top-[100vh] w-full h-screen flex flex-col md:flex-row transition-all duration-1000 ease-in-out z-40 bg-muse-dark">
+        
+        <button onclick="openApiKeySettings()" class="absolute top-4 right-4 z-50 text-muse-dim hover:text-muse-rose text-xs tracking-widest border border-muse-dim/30 px-3 py-1 rounded-full backdrop-blur-md">
+            API KEY
+        </button>
+
+        <div class="relative w-full md:w-1/2 h-1/2 md:h-full border-b md:border-b-0 md:border-r border-muse-panel group">
+            <div class="absolute inset-0">
+                <img src="https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=1000&auto=format&fit=crop" class="w-full h-full object-cover opacity-20 group-hover:opacity-30 transition duration-700 grayscale">
+                <div class="absolute inset-0 bg-gradient-to-t from-muse-dark via-muse-dark/80 to-transparent"></div>
+            </div>
+
+            <div class="relative z-10 h-full flex flex-col p-8 md:p-16 justify-end md:justify-center">
+                <span class="text-muse-rose text-xs tracking-[0.3em] uppercase mb-2">Solo Fantasy</span>
+                <h2 class="font-serif text-4xl text-muse-gold mb-6">幻想编剧</h2>
+                <p class="text-muse-dim text-sm mb-8 font-light leading-relaxed max-w-md">
+                    不需要具体的对象，只需要一个氛围。<br>输入一个关键词，AI 为你生成一段关于声音、气味与触觉的独白。
+                </p>
+                
+                <div class="w-full max-w-md space-y-4">
+                    <input type="text" id="script-prompt" placeholder="例如：暴雨夜的落地窗、淡淡的烟草味..." 
+                           class="w-full bg-muse-panel/50 border border-muse-dim/30 rounded-lg p-4 text-muse-gold placeholder-muse-dim focus:outline-none focus:border-muse-rose glow-focus transition backdrop-blur-sm">
+                    
+                    <button onclick="generateScript()" id="script-btn" class="w-full py-3 bg-muse-rose/80 hover:bg-muse-rose text-white text-xs tracking-widest rounded-lg transition duration-300">
+                        GENERATE
+                    </button>
+                    
+                    <div id="script-result" class="hidden mt-6 p-4 border-l border-muse-rose/50 text-muse-gold/80 text-sm font-serif leading-loose italic max-h-[30vh] overflow-y-auto no-scrollbar">
+                        </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="relative w-full md:w-1/2 h-1/2 md:h-full group">
+            <div class="absolute inset-0">
+                <img src="https://images.unsplash.com/photo-1473181488821-2d23949a045a?q=80&w=1000&auto=format&fit=crop" class="w-full h-full object-cover opacity-20 group-hover:opacity-30 transition duration-700 grayscale">
+                <div class="absolute inset-0 bg-gradient-to-t from-muse-dark via-muse-dark/80 to-transparent"></div>
+            </div>
+
+            <div class="relative z-10 h-full flex flex-col p-8 md:p-16 justify-end md:justify-center">
+                <span class="text-muse-rose text-xs tracking-[0.3em] uppercase mb-2">Interactive Roleplay</span>
+                <h2 class="font-serif text-4xl text-muse-gold mb-6">互动故事</h2>
+                <p class="text-muse-dim text-sm mb-6 font-light leading-relaxed max-w-md">
+                    你是主角。在私密的电梯里，或者禁忌的图书馆。<br>你的每一次回应，都会改变他和你的距离。
+                </p>
+
+                <div class="flex gap-4 mb-6" id="story-scenarios">
+                    <button onclick="startStory('elevator')" class="px-4 py-2 border border-muse-dim/30 rounded hover:border-muse-rose/50 hover:bg-muse-panel text-xs text-muse-gold transition">私人电梯</button>
+                    <button onclick="startStory('library')" class="px-4 py-2 border border-muse-dim/30 rounded hover:border-muse-rose/50 hover:bg-muse-panel text-xs text-muse-gold transition">禁忌图书馆</button>
+                </div>
+
+                <div id="chat-interface" class="hidden w-full max-w-md flex-1 flex-col max-h-[50vh]">
+                    <div id="chat-history" class="flex-1 overflow-y-auto mb-4 space-y-4 pr-2 no-scrollbar bg-black/20 p-4 rounded-lg border border-white/5">
+                        </div>
+                    <div class="relative">
+                        <input type="text" id="story-input" placeholder="输入你的动作或回应..." 
+                               class="w-full bg-muse-panel/50 border border-muse-dim/30 rounded-lg pl-4 pr-12 py-3 text-sm text-muse-gold focus:outline-none focus:border-muse-rose glow-focus backdrop-blur-sm"
+                               onkeypress="if(event.key==='Enter') continueStory()">
+                        <button onclick="continueStory()" class="absolute right-2 top-2 p-1.5 text-muse-dim hover:text-muse-rose transition">
+                            ➤
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <div id="apikey-modal" class="fixed inset-0 z-[60] hidden">
+        <div class="absolute inset-0 bg-black/95 backdrop-blur-sm"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="bg-muse-panel border border-muse-rose/30 rounded-lg max-w-lg w-full p-8">
+                <h3 class="font-serif text-2xl text-muse-gold mb-4">API Key</h3>
+                <input type="password" id="apikey-input" placeholder="Paste Gemini API Key" 
+                       class="w-full bg-black/40 border border-muse-dim/50 rounded-lg p-3 text-muse-gold focus:border-muse-rose focus:outline-none mb-4">
+                <div class="flex gap-3">
+                    <button onclick="saveApiKey()" class="flex-1 bg-muse-rose hover:bg-muse-rose/80 text-white py-3 rounded-lg transition">Save</button>
+                    <button onclick="document.getElementById('apikey-modal').classList.add('hidden')" class="flex-1 border border-muse-dim text-muse-dim py-3 rounded-lg hover:text-white transition">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========== 1. 页面流控制 ==========
+        function enterMuse() {
+            const landing = document.getElementById('landing-page');
+            const main = document.getElementById('main-content');
+            
+            // 向上滑动效果
+            landing.style.transform = 'translateY(-100vh)';
+            main.style.top = '0';
+        }
+
+        // ========== 2. API Key 管理 (复用原有逻辑) ==========
+        function getApiKey() {
+            return localStorage.getItem('muse_gemini_apikey');
+        }
+
+        function saveApiKey() {
+            const key = document.getElementById('apikey-input').value.trim();
+            if (key) {
+                localStorage.setItem('muse_gemini_apikey', key);
+                document.getElementById('apikey-modal').classList.add('hidden');
+                if (window.pendingAction) window.pendingAction();
+            }
+        }
+
+        function openApiKeySettings() {
+            document.getElementById('apikey-input').value = getApiKey() || '';
+            document.getElementById('apikey-modal').classList.remove('hidden');
+        }
+
+        function requireApiKey(callback) {
+            if (!getApiKey()) {
+                window.pendingAction = callback;
+                openApiKeySettings();
+                return false;
+            }
+            return true;
+        }
+
+        // ========== 3. Gemini API 调用 ==========
+        async function callGemini(prompt, systemPrompt) {
+            const apiKey = getApiKey();
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+            
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        systemInstruction: { parts: [{ text: systemPrompt }] }
+                    })
+                });
+                const data = await response.json();
+                return data.candidates?.[0]?.content?.parts?.[0]?.text || "Muse 走神了...";
+            } catch (e) {
+                console.error(e);
+                return "连接中断，请检查网络或 API Key。";
+            }
+        }
+
+        // ========== 4. 幻想编剧逻辑 ==========
+        async function generateScript() {
+            if (!requireApiKey(generateScript)) return;
+            
+            const input = document.getElementById('script-prompt');
+            const resultDiv = document.getElementById('script-result');
+            const btn = document.getElementById('script-btn');
+            
+            if (!input.value) return;
+            
+            btn.innerText = "WRITING...";
+            btn.disabled = true;
+            resultDiv.classList.remove('hidden');
+            resultDiv.innerHTML = '<span class="animate-pulse">正在编织...</span>';
+            
+            const system = "你是一个女性向情色文学助手。根据关键词写一段简短的、充满性张力和氛围感的独白。侧重声音、气味、触觉。含蓄唯美，不要直白露骨。100字以内。";
+            const text = await callGemini(input.value, system);
+            
+            resultDiv.innerHTML = marked.parse(text);
+            btn.innerText = "GENERATE";
+            btn.disabled = false;
+        }
+
+        // ========== 5. 互动故事逻辑 ==========
+        let storyContext = "";
+        
+        function startStory(type) {
+            const ui = document.getElementById('chat-interface');
+            const history = document.getElementById('chat-history');
+            const scenariosDiv = document.getElementById('story-scenarios');
+            
+            scenariosDiv.classList.add('hidden'); // 隐藏选择按钮
+            ui.classList.remove('hidden');
+            ui.classList.add('flex');
+            
+            history.innerHTML = '';
+            
+            let intro = "";
+            if (type === 'elevator') {
+                intro = "电梯故障停在22层，灯光闪烁。狭小的空间里，你闻到了他身上淡淡的木质香和雨夜的潮气。他松开领带，眼神深邃地看着你...";
+                storyContext = "场景：故障电梯。人物：'你'和一名有张力的男性。氛围：紧张、暧昧。";
+            } else {
+                intro = "图书馆闭馆音乐响起，你还在最深处的书架前。他挡住了你的去路，手指划过书脊，停在你耳边...";
+                storyContext = "场景：空无一人的图书馆。人物：'你'和暗恋对象。氛围：禁忌、安静。";
+            }
+            
+            addBubble(intro, 'ai');
+        }
+
+        async function continueStory() {
+            if (!requireApiKey(continueStory)) return;
+            
+            const input = document.getElementById('story-input');
+            const val = input.value.trim();
+            if (!val) return;
+            
+            addBubble(val, 'user');
+            input.value = '';
+            
+            // 显示正在输入
+            const loadingId = addBubble('...', 'ai', true);
+            
+            const prompt = `背景：${storyContext}\n用户动作：${val}\n请以第二人称（你）续写一段剧情，侧重心理和感官描写，保持暧昧拉扯。`;
+            const system = "你是Muse的AI作者。风格：慢热、细腻、注重性张力。";
+            
+            const reply = await callGemini(prompt, system);
+            
+            // 移除loading，显示回复
+            document.getElementById(loadingId).remove();
+            addBubble(reply, 'ai');
+            
+            storyContext += `\n用户：${val}\n剧情：${reply}`;
+        }
+
+        function addBubble(text, role, isLoading = false) {
+            const div = document.createElement('div');
+            const id = 'msg-' + Date.now();
+            div.id = id;
+            div.className = `mb-4 ${role === 'user' ? 'text-right' : 'text-left'}`;
+            
+            const bubble = document.createElement('div');
+            bubble.className = `inline-block max-w-[90%] px-4 py-3 rounded-lg text-sm leading-relaxed ${
+                role === 'user' 
+                ? 'bg-muse-rose/20 text-muse-gold border border-muse-rose/30' 
+                : 'bg-muse-panel text-muse-gold/90 border border-muse-dim/20 font-serif italic'
+            }`;
+            
+            if (isLoading) bubble.classList.add('animate-pulse');
+            bubble.innerHTML = isLoading ? text : marked.parse(text);
+            
+            div.appendChild(bubble);
+            document.getElementById('chat-history').appendChild(div);
+            
+            // 滚动到底部
+            const history = document.getElementById('chat-history');
+            history.scrollTop = history.scrollHeight;
+            
+            return id;
+        }
+
+        // 初始化检查
+        window.addEventListener('load', () => {
+            if(!getApiKey()) openApiKeySettings();
+        });
+    </script>
+</body>
+</html>
