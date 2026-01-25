@@ -1045,15 +1045,30 @@
 
         // ========== 音频播放逻辑 ==========
         function togglePlay(element) {
+            console.log('togglePlay called', element);
+            
             const playIcon = element.querySelector('.play-icon');
             const pauseIcon = element.querySelector('.pause-icon');
             const playBtn = element.querySelector('.play-btn');
             const audio = element.querySelector('audio');
 
-            if (!playIcon || !pauseIcon || !playBtn || !audio) return; 
+            console.log('Elements found:', {
+                playIcon: !!playIcon,
+                pauseIcon: !!pauseIcon,
+                playBtn: !!playBtn,
+                audio: !!audio,
+                audioSrc: audio?.src
+            });
+
+            if (!playIcon || !pauseIcon || !playBtn || !audio) {
+                console.error('Missing required elements for audio playback');
+                return; 
+            }
 
             const isPlaying = playIcon.classList.contains('hidden');
+            console.log('Current playing state:', isPlaying);
 
+            // 停止其他音频
             document.querySelectorAll('audio').forEach(a => {
                 if (a !== audio && !a.id.includes('bgm')) {
                     a.pause();
@@ -1061,6 +1076,7 @@
                 }
             });
             
+            // 重置其他卡片的播放状态
             document.querySelectorAll('.rounded-lg').forEach(card => {
                 if(card !== element) {
                     const pIcon = card.querySelector('.play-icon');
@@ -1076,17 +1092,23 @@
             });
 
             if (!isPlaying) {
+                // 开始播放
+                console.log('Starting playback...');
                 const bgm = document.getElementById('bgm-rain');
                 if(bgm && !bgm.paused) bgm.pause();
 
                 audio.play().then(() => {
+                    console.log('Audio playback started successfully');
                     playIcon.classList.add('hidden');
                     pauseIcon.classList.remove('hidden');
                     playBtn.classList.add('playing-animation', 'border-muse-rose', 'bg-white/10');
                 }).catch(e => {
                     console.error("Playback failed:", e);
+                    alert('音频播放失败，可能是网络问题或浏览器限制');
                 });
             } else {
+                // 停止播放
+                console.log('Stopping playback...');
                 audio.pause();
                 playIcon.classList.remove('hidden');
                 pauseIcon.classList.add('hidden');
