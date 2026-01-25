@@ -1043,6 +1043,28 @@
             }
         }
 
+        // 检测用户交互，解决浏览器自动播放限制
+        let userInteracted = false;
+        
+        function enableAudioPlayback() {
+            if (!userInteracted) {
+                userInteracted = true;
+                console.log('User interaction detected, audio playback enabled');
+                
+                // 预加载音频以提高播放成功率
+                document.querySelectorAll('audio').forEach(audio => {
+                    if (audio.src) {
+                        audio.load();
+                    }
+                });
+            }
+        }
+        
+        // 监听用户交互事件
+        document.addEventListener('click', enableAudioPlayback);
+        document.addEventListener('touchstart', enableAudioPlayback);
+        document.addEventListener('keydown', enableAudioPlayback);
+        
         // ========== 音频播放逻辑 ==========
         function togglePlay(element) {
             console.log('togglePlay called', element);
@@ -1097,6 +1119,9 @@
                 const bgm = document.getElementById('bgm-rain');
                 if(bgm && !bgm.paused) bgm.pause();
 
+                // 先尝试加载音频
+                audio.load();
+                
                 audio.play().then(() => {
                     console.log('Audio playback started successfully');
                     playIcon.classList.add('hidden');
@@ -1104,7 +1129,18 @@
                     playBtn.classList.add('playing-animation', 'border-muse-rose', 'bg-white/10');
                 }).catch(e => {
                     console.error("Playback failed:", e);
-                    alert('音频播放失败，可能是网络问题或浏览器限制');
+                    
+                    // 尝试使用Web Audio API生成简单的音效作为备用
+                    if (window.AudioContext || window.webkitAudioContext) {
+                        try {
+                            generateFallbackAudio(element);
+                        } catch (fallbackError) {
+                            console.error("Fallback audio failed:", fallbackError);
+                            alert('音频播放失败。这可能是因为:\n1. 浏览器阻止了自动播放\n2. 音频文件无法加载\n3. 网络连接问题\n\n请尝试先点击页面任意位置，然后再播放音频。');
+                        }
+                    } else {
+                        alert('音频播放失败，浏览器不支持音频播放功能');
+                    }
                 });
             } else {
                 // 停止播放
@@ -1113,6 +1149,116 @@
                 playIcon.classList.remove('hidden');
                 pauseIcon.classList.add('hidden');
                 playBtn.classList.remove('playing-animation', 'border-muse-rose', 'bg-white/10');
+            }
+        }
+        
+        // 生成备用音频效果
+        function generateFallbackAudio(element) {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            const audioContext = new AudioContext();
+            
+            // 根据卡片类型生成不同的音效
+            const cardTitle = element.querySelector('h3')?.textContent || '';
+            let frequency = 440; // 默认频率
+            let duration = 2; // 持续时间
+            
+            if (cardTitle.includes('雨天')) {
+                // 雨声效果 - 白噪音
+                generateWhiteNoise(audioContext, 3);
+            } else if (cardTitle.includes('夜晚') || cardTitle.includes('睡')) {
+                // 夜晚效果 - 低频音
+                generateTone(audioContext, 200, 3);
+            } else if (cardTitle.includes('咖啡')) {
+                // 咖啡厅效果 - 中频音
+                generateTone(audioContext, 300, 2);
+            } else if (cardTitle.includes('心跳') || cardTitle.includes('频率')) {
+                // 心跳效果 - 节拍音
+                generateHeartbeat(audioContext);
+            } else {
+                // 默认舒缓音效
+                generateTone(audioContext, 440, 2);
+            }
+            
+            // 更新UI
+            const playIcon = element.querySelector('.play-icon');
+            const pauseIcon = element.querySelector('.pause-icon');
+            const playBtn = element.querySelector('.play-btn');
+            
+            playIcon.classList.add('hidden');
+            pauseIcon.classList.remove('hidden');
+            playBtn.classList.add('playing-animation', 'border-muse-rose', 'bg-white/10');
+            
+            // 设置定时器恢复UI
+            setTimeout(() => {
+                playIcon.classList.remove('hidden');
+                pauseIcon.classList.add('hidden');
+                playBtn.classList.remove('playing-animation', 'border-muse-rose', 'bg-white/10');
+            }, duration * 1000);
+        }
+        
+        // 生成白噪音（雨声效果）
+        function generateWhiteNoise(audioContext, duration) {
+            const bufferSize = audioContext.sampleRate * duration;
+            const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+            const data = buffer.getChannelData(0);
+            
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = (Math.random() * 2 - 1) * 0.1; // 降低音量
+            }
+            
+            const source = audioContext.createBufferSource();
+            const gainNode = audioContext.createGain();
+            
+            source.buffer = buffer;
+            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+            
+            source.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            source.start();
+        }
+        
+        // 生成纯音调
+        function generateTone(audioContext, frequency, duration) {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+            oscillator.type = 'sine';
+            
+            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+            gainNode.gain.linearRampToValueAtTime(0.1, audioContext.currentTime + 0.1);
+            gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + duration);
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.start();
+            oscillator.stop(audioContext.currentTime + duration);
+        }
+        
+        // 生成心跳效果
+        function generateHeartbeat(audioContext) {
+            const beats = 6; // 6次心跳
+            const interval = 0.8; // 每次心跳间隔
+            
+            for (let i = 0; i < beats; i++) {
+                setTimeout(() => {
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    
+                    oscillator.frequency.setValueAtTime(80, audioContext.currentTime);
+                    oscillator.type = 'sine';
+                    
+                    gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+                    gainNode.gain.linearRampToValueAtTime(0.2, audioContext.currentTime + 0.05);
+                    gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.2);
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    
+                    oscillator.start();
+                    oscillator.stop(audioContext.currentTime + 0.2);
+                }, i * interval * 1000);
             }
         }
 
