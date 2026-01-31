@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ErrorHandler Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold mb-8">ErrorHandler 功能测试</h1>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Error Classification Test -->
+            <div class="bg-gray-800 p-6 rounded-lg">
+                <h2 class="text-xl font-semibold mb-4">错误分类测试</h2>
+                <div class="space-y-2">
+                    <button onclick="testErrorClassification()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded">
+                        测试错误分类
+                    </button>
+                </div>
+                <div id="classification-results" class="mt-4 text-sm"></div>
+            </div>
+            
+            <!-- Notification Test -->
+            <div class="bg-gray-800 p-6 rounded-lg">
+                <h2 class="text-xl font-semibold mb-4">通知系统测试</h2>
+                <div class="space-y-2">
+                    <button onclick="testErrorNotification()" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded">
+                        测试错误通知
+                    </button>
+                    <button onclick="testFallbackNotification()" class="bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded">
+                        测试降级通知
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Fallback Logic Test -->
+            <div class="bg-gray-800 p-6 rounded-lg">
+                <h2 class="text-xl font-semibold mb-4">降级逻辑测试</h2>
+                <div class="space-y-2">
+                    <button onclick="testFallbackLogic()" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded">
+                        测试自动降级
+                    </button>
+                </div>
+                <div id="fallback-results" class="mt-4 text-sm"></div>
+            </div>
+            
+            <!-- Error Statistics -->
+            <div class="bg-gray-800 p-6 rounded-lg">
+                <h2 class="text-xl font-semibold mb-4">错误统计</h2>
+                <div class="space-y-2">
+                    <button onclick="showErrorStats()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded">
+                        显示错误统计
+                    </button>
+                    <button onclick="clearErrorLog()" class="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded">
+                        清除错误日志
+                    </button>
+                </div>
+                <div id="stats-results" class="mt-4 text-sm"></div>
+            </div>
+        </div>
+        
+        <div class="mt-8">
+            <h2 class="text-xl font-semibold mb-4">测试日志</h2>
+            <div id="test-log" class="bg-gray-800 p-4 rounded-lg text-sm font-mono max-h-96 overflow-y-auto"></div>
+        </div>
+    </div>
+
+    <!-- Load TTS Components -->
+    <script src="js/tts/TTSConfig.js"></script>
+    <script src="js/tts/WebSpeechEngine.js"></script>
+    <script src="js/tts/DashScopeEngine.js"></script>
+    <script src="js/tts/StreamingProcessor.js"></script>
+    <script src="js/tts/ErrorHandler.js"></script>
+    <script src="js/tts/TTSService.js"></script>
+
+    <script>
+        let mockTTSService;
+        let errorHandler;
+        
+        // Initialize mock TTS service for testing
+        function initializeMockTTSService() {
+            mockTTSService = {
+                currentEngine: 'dashscope',
+                engines: new Map([
+                    ['dashscope', { name: 'DashScope' }],
+                    ['web-speech', { name: 'Web Speech' }]
+                ]),
+                config: {
+                    save: (key, value) => log(`Config saved: ${key} = ${value}`)
+                },
+                switchEngine: async (engine) => {
+                    log(`Switching engine to: ${engine}`);
+                    mockTTSService.currentEngine = engine;
+                    return true;
+                },
+                synthesize: async (text, options) => {
+                    log(`Synthesizing: "${text}" with engine: ${mockTTSService.currentEngine}`);
+                    if (mockTTSService.currentEngine === 'dashscope' && text.includes('error')) {
+                        throw new Error('DashScope API error: Service unavailable');
+                    }
+                    return Promise.resolve();
+                }
+            };
+            
+            errorHandler = new ErrorHandler(mockTTSService);
+            log('Mock TTS Service and ErrorHandler initialized');
+        }
+        
+        function log(message) {
+            const logElement = document.getElementById('test-log');
+            const timestamp = new Date().toLocaleTimeString();
+            logElement.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+        
+        function testErrorClassification() {
+            const testErrors = [
+                new Error('Network timeout occurred'),
+                new Error('DashScope API key is invalid'),
+                new Error('DashScope API error: 500 Internal Server Error'),
+                new Error('Audio playback failed'),
+                new Error('Web Speech API not supported'),
+                new Error('Unknown error occurred')
+            ];
+            
+            const results = document.getElementById('classification-results');
+            results.innerHTML = '<h3 class="font-semibold mb-2">分类结果:</h3>';
+            
+            testErrors.forEach((error, index) => {
+                const classification = errorHandler.classifyError(error);
+                results.innerHTML += `<div>${index + 1}. "${error.message}" → <span class="text-blue-400">${classification}</span></div>`;
+                log(`Error classified: "${error.message}" → ${classification}`);
+            });
+        }
+        
+        function testErrorNotification() {
+            errorHandler.notificationManager.showError('这是一个测试错误消息', 'error');
+            log('Error notification displayed');
+        }
+        
+        function testFallbackNotification() {
+            errorHandler.notificationManager.showFallbackNotification('dashscope', 'web-speech');
+            log('Fallback notification displayed');
+        }
+        
+        async function testFallbackLogic() {
+            const results = document.getElementById('fallback-results');
+            results.innerHTML = '<h3 class="font-semibold mb-2">降级测试结果:</h3>';
+            
+            try {
+                log('Testing fallback logic with simulated DashScope error...');
+                
+                const originalRequest = {
+                    text: 'This will cause an error',
+                    options: { voice: 'yushao' }
+                };
+                
+                // Simulate a DashScope error
+                const error = new Error('DashScope API error: Service unavailable');
+                
+                await errorHandler.handleError(error, originalRequest);
+                
+                results.innerHTML += '<div class="text-green-400">✓ 降级成功: DashScope → Web Speech</div>';
+                log('Fallback logic test completed successfully');
+                
+            } catch (error) {
+                results.innerHTML += `<div class="text-red-400">✗ 降级失败: ${error.message}</div>`;
+                log(`Fallback logic test failed: ${error.message}`);
+            }
+        }
+        
+        function showErrorStats() {
+            const stats = errorHandler.getErrorStats();
+            const results = document.getElementById('stats-results');
+            
+            results.innerHTML = `
+                <h3 class="font-semibold mb-2">错误统计:</h3>
+                <div>总错误数: ${stats.totalErrors}</div>
+                <div>按类型分组:</div>
+                <div class="ml-4">${Object.entries(stats.errorsByType).map(([type, count]) => 
+                    `${type}: ${count}`).join('<br>')}</div>
+                <div>按引擎分组:</div>
+                <div class="ml-4">${Object.entries(stats.errorsByEngine).map(([engine, count]) => 
+                    `${engine}: ${count}`).join('<br>')}</div>
+            `;
+            
+            log(`Error statistics displayed: ${stats.totalErrors} total errors`);
+        }
+        
+        function clearErrorLog() {
+            errorHandler.clearErrorLog();
+            const results = document.getElementById('stats-results');
+            results.innerHTML = '<div class="text-green-400">错误日志已清除</div>';
+            log('Error log cleared');
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeMockTTSService();
+        });
+    </script>
+</body>
+</html>

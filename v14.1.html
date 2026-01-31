@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Muse | 她的情欲画廊</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        muse: {
+                            black: '#050505',
+                            dark: '#0a0a0a',
+                            panel: '#121212',
+                            rose: '#e11d48', 
+                            gold: '#e5e5e5',
+                            dim: '#525252',
+                        }
+                    },
+                    fontFamily: {
+                        serif: ['"Playfair Display"', 'serif'],
+                        sans: ['"Lato"', 'sans-serif'],
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 1s ease-out forwards',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: 0, transform: 'translateY(10px)' },
+                            '100%': { opacity: 1, transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* === Background Slideshow (Double Buffer Fix) === */
+        .hero-slideshow {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 0;
+            overflow: hidden;
+        }
+        .slide-image {
+            position: absolute;
+            inset: 0;
+            width: 100%; height: 100%;
+            object-fit: cover;
+            opacity: 0;
+            transition: opacity 3s ease-in-out, transform 8s ease-out; 
+            transform: scale(1.1);
+            filter: contrast(1.1) brightness(0.6) blur(1px);
+            z-index: 0;
+            will-change: opacity, transform;
+        }
+        /* Active: The image currently fading in or fully visible */
+        .slide-image.active {
+            opacity: 1;
+            transform: scale(1);
+            z-index: 2; /* On top */
+        }
+        /* Previous: The image staying visible BEHIND the active one */
+        .slide-image.previous {
+            opacity: 1 !important; /* Force visibility */
+            z-index: 1; /* Behind active */
+        }
+
+        /* === Text Effects === */
+        .flow-text-layer {
+            font-family: "Playfair Display", serif; 
+            color: rgba(255, 255, 255, 0.95);
+            text-shadow: 0 0 40px rgba(225, 29, 72, 0.6); 
+            letter-spacing: 0.15em;
+            mix-blend-mode: overlay;
+        }
+
+        /* Glass Panel */
+        .glass-panel { 
+            background: rgba(10, 10, 10, 0.7); 
+            backdrop-filter: blur(20px); 
+            -webkit-backdrop-filter: blur(20px); 
+            border: 1px solid rgba(255, 255, 255, 0.08); 
+        }
+
+        /* Voice Card Selection Indicator */
+        .voice-card { position: relative; }
+        .voice-card.selected {
+            border-color: #e11d48;
+            background: rgba(225, 29, 72, 0.1);
+        }
+        .indicator-dot {
+            height: 8px; width: 8px; border-radius: 50%;
+            background-color: #e11d48;
+            display: none;
+            box-shadow: 0 0 8px #e11d48;
+        }
+        .voice-card.selected .indicator-dot { display: block; }
+        
+        /* Mobile Chat Fullscreen Fix */
+        @media (max-width: 768px) {
+            #chat-interface {
+                position: fixed;
+                inset: 0;
+                z-index: 60;
+                background-color: #0a0a0a;
+                height: 100%;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body class="bg-muse-black text-muse-gold font-sans antialiased overflow-x-hidden selection:bg-muse-rose selection:text-white">
+
+    <!-- 1. HERO SECTION -->
+    <section id="landing-page" class="relative w-full h-screen overflow-hidden flex flex-col items-center justify-center z-50 bg-muse-black transition-opacity duration-1000">
+        
+        <div class="hero-slideshow" id="slideshow-container">
+            <!-- Images injected by JS -->
+            <div class="absolute inset-0 bg-gradient-to-b from-muse-black/30 via-transparent to-muse-black/90 z-20 pointer-events-none"></div>
+            <div class="absolute inset-0 opacity-[0.08] z-20 pointer-events-none" style="background-image: url('https://grainy-gradients.vercel.app/noise.svg');"></div>
+        </div>
+
+        <div class="relative z-30 text-center px-6 flex flex-col items-center">
+            <div class="mb-8 animate-fade-in">
+                <h1 class="flow-text-layer text-7xl md:text-[10rem] font-black leading-none select-none">
+                    MUSE
+                </h1>
+            </div>
+
+            <p class="font-serif italic text-white/70 text-lg md:text-xl mb-12 animate-fade-in mix-blend-screen" style="animation-delay: 0.2s;">
+                Your Narrative. Your Pleasure.
+            </p>
+            
+            <div class="animate-fade-in" style="animation-delay: 0.4s;">
+                <button onclick="enterPrism()" class="group relative px-10 py-4 overflow-hidden rounded-full border border-white/20 hover:border-muse-rose transition-all duration-500 bg-white/5 backdrop-blur-md">
+                    <div class="absolute inset-0 w-0 bg-muse-rose/40 transition-all duration-500 ease-out group-hover:w-full"></div>
+                    <span class="relative font-serif text-xs tracking-[0.25em] text-white group-hover:text-white transition-colors duration-300 uppercase">
+                        今晚你也睡不着吗？
+                    </span>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- 2. The Prism (Quiz) -->
+    <section id="prism-modal" class="fixed inset-0 z-[60] hidden bg-muse-black/95 backdrop-blur-xl flex items-center justify-center p-6 transition-opacity duration-500 overflow-y-auto">
+        <div class="max-w-xl w-full relative">
+            <button onclick="closePrism()" class="absolute -top-12 right-0 md:top-0 md:-right-12 text-stone-500 hover:text-white p-2 z-50">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+
+            <div class="mb-8 flex justify-between items-end border-b border-white/10 pb-4">
+                <h2 class="font-serif text-3xl text-muse-gold">The Prism</h2>
+                <span class="text-xs text-muse-dim tracking-widest" id="prism-step-indicator">STEP 1 / 3</span>
+            </div>
+            <div id="question-container" class="min-h-[300px] flex flex-col justify-center animate-fade-in"></div>
+            
+            <div class="flex justify-between mt-8">
+                <button onclick="prevQuestion()" id="prev-btn" class="text-muse-dim hover:text-white text-xs tracking-widest invisible flex items-center gap-2">
+                    <i class="fa-solid fa-arrow-left"></i> BACK
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- 3. Main Dashboard -->
+    <main id="main-content" class="fixed inset-0 top-0 w-full h-full hidden flex-col md:flex-row z-40 bg-muse-black transition-opacity duration-1000 opacity-0 overflow-y-auto md:overflow-hidden">
+        
+        <!-- Sticky Header (Global Nav) -->
+        <div id="global-nav" class="sticky top-0 z-50 flex justify-between items-center p-4 bg-muse-black/80 backdrop-blur-md md:absolute md:top-6 md:right-6 md:bg-transparent md:p-0 md:justify-end border-b border-white/5 md:border-none transition-opacity duration-300">
+            <div class="md:hidden font-serif text-muse-gold tracking-widest text-lg">MUSE</div>
+            <div class="flex gap-4 items-center">
+                <button onclick="openPrism()" class="text-[10px] text-muse-dim hover:text-white tracking-widest transition">PROFILE</button>
+                <button onclick="openApiKeySettings()" class="text-[10px] text-muse-dim hover:text-white tracking-widest transition">KEY</button>
+            </div>
+        </div>
+
+        <!-- Left: AI Solo Fantasy -->
+        <div class="relative w-full md:w-5/12 min-h-[80vh] md:h-full border-b md:border-b-0 md:border-r border-white/5 flex flex-col bg-muse-panel shrink-0">
+            <div class="absolute inset-0 overflow-hidden pointer-events-none">
+                <div class="absolute -top-[20%] -left-[20%] w-[150%] h-[150%] bg-[url('https://images.unsplash.com/photo-1505322022379-7c3353ee6291?q=80&w=1000&auto=format&fit=crop')] bg-cover opacity-10 blur-sm mix-blend-overlay"></div>
+                <div class="absolute inset-0 bg-gradient-to-t from-muse-panel via-muse-panel/90 to-transparent"></div>
+            </div>
+            
+            <div class="relative z-10 flex-1 flex flex-col p-8 md:p-12 justify-center">
+                <span class="text-muse-rose/80 text-[10px] tracking-[0.3em] uppercase mb-3 flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-muse-rose animate-pulse"></span>Solo Fantasy
+                </span>
+                <h2 class="font-serif text-3xl md:text-4xl text-muse-gold mb-4">幻想编剧</h2>
+                <p class="text-muse-dim text-sm mb-8 font-light leading-relaxed max-w-sm">
+                    不需要具体的对象，只需要一个瞬间。<br>输入一个关键词，Muse 为你生成一段关于声音、气味与触觉的私密独白。
+                </p>
+                <div class="space-y-4">
+                    <input type="text" id="script-prompt" placeholder="例如：暴雨夜、淡淡的烟草味..." class="w-full bg-black/30 border border-white/10 rounded-lg p-4 text-muse-gold placeholder-muse-dim focus:outline-none focus:border-muse-rose transition backdrop-blur-sm text-sm">
+                    <button onclick="generateScript()" id="script-btn" class="w-full py-3 bg-white/5 hover:bg-muse-rose text-white text-xs tracking-[0.2em] rounded-lg transition duration-500 border border-white/5 hover:border-transparent">
+                        GENERATE
+                    </button>
+                    <div id="script-result" class="hidden mt-6 p-6 border-l border-muse-rose/30 bg-white/5 rounded-r-lg text-muse-gold/90 text-sm font-serif leading-loose italic max-h-[40vh] overflow-y-auto no-scrollbar animate-fade-in"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Interactive Story -->
+        <div class="relative w-full md:w-7/12 min-h-[100vh] md:h-full flex flex-col bg-muse-black">
+            
+            <!-- Scenario Selector -->
+            <div id="scenario-selector" class="flex-1 p-6 md:p-12 overflow-y-auto no-scrollbar pb-24">
+                <div class="mb-8">
+                    <span class="text-muse-rose/80 text-[10px] tracking-[0.3em] uppercase mb-3 block">Interactive Roleplay</span>
+                    <h2 class="font-serif text-3xl md:text-4xl text-muse-gold">选择你的场景</h2>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Elevator -->
+                    <div onclick="startStory('elevator')" class="group relative h-48 rounded-lg overflow-hidden cursor-pointer border border-white/5 hover:border-muse-rose/50 transition-all duration-500">
+                        <img src="https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?q=80&w=600&auto=format&fit=crop" class="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:scale-105 transition duration-700 grayscale group-hover:grayscale-0">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent"></div>
+                        <div class="absolute bottom-4 left-4">
+                            <h3 class="font-serif text-xl text-white mb-1 group-hover:text-muse-rose transition">私人电梯</h3>
+                            <p class="text-[10px] text-muse-dim uppercase tracking-widest">Confined · Breath</p>
+                        </div>
+                    </div>
+
+                    <!-- Office -->
+                    <div onclick="startStory('office')" class="group relative h-48 rounded-lg overflow-hidden cursor-pointer border border-white/5 hover:border-muse-rose/50 transition-all duration-500">
+                        <img src="https://images.unsplash.com/photo-1504593811423-6dd665756598?q=80&w=600&auto=format&fit=crop" class="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:scale-105 transition duration-700 grayscale group-hover:grayscale-0">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent"></div>
+                        <div class="absolute bottom-4 left-4">
+                            <h3 class="font-serif text-xl text-white mb-1 group-hover:text-muse-rose transition">深夜办公室</h3>
+                            <p class="text-[10px] text-muse-dim uppercase tracking-widest">Power · Silence</p>
+                        </div>
+                    </div>
+
+                    <!-- Bedroom -->
+                    <div onclick="startStory('bedroom')" class="group relative h-48 rounded-lg overflow-hidden cursor-pointer border border-white/5 hover:border-muse-rose/50 transition-all duration-500">
+                        <img src="https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?q=80&w=600&auto=format&fit=crop" class="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:scale-105 transition duration-700 grayscale group-hover:grayscale-0">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent"></div>
+                        <div class="absolute bottom-4 left-4">
+                            <h3 class="font-serif text-xl text-white mb-1 group-hover:text-muse-rose transition">迷离卧室</h3>
+                            <p class="text-[10px] text-muse-dim uppercase tracking-widest">Intimate · Skin</p>
+                        </div>
+                    </div>
+
+                    <!-- Car -->
+                    <div onclick="startStory('car')" class="group relative h-48 rounded-lg overflow-hidden cursor-pointer border border-white/5 hover:border-muse-rose/50 transition-all duration-500">
+                        <img src="https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?q=80&w=600&auto=format&fit=crop" class="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:scale-105 transition duration-700 grayscale group-hover:grayscale-0">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent"></div>
+                        <div class="absolute bottom-4 left-4">
+                            <h3 class="font-serif text-xl text-white mb-1 group-hover:text-muse-rose transition">暴雨车内</h3>
+                            <p class="text-[10px] text-muse-dim uppercase tracking-widest">Sound · Heat</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Interface -->
+            <div id="chat-interface" class="hidden flex-col h-full bg-muse-black">
+                <!-- Toolbar -->
+                <div class="p-3 border-b border-white/5 flex justify-between items-center bg-muse-panel/80 backdrop-blur-sm pt-safe-top">
+                    <div class="flex items-center gap-3">
+                        <button onclick="exitStory()" class="text-muse-dim hover:text-white transition p-2"><i class="fa-solid fa-chevron-left"></i></button>
+                        <div>
+                            <h3 class="font-serif text-base text-white" id="chat-title">Story Title</h3>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <!-- Persona & Voice Settings Trigger -->
+                        <button onclick="toggleSettings()" class="text-[10px] text-muse-gold/80 border border-white/10 hover:border-muse-rose rounded-full px-3 py-1.5 transition flex items-center gap-2 bg-white/5">
+                            <i class="fa-solid fa-sliders"></i> <span id="current-persona-label">Default</span>
+                        </button>
+                        <button onclick="toggleVoiceOutput()" id="tts-toggle" class="text-[10px] text-muse-dim border border-white/10 hover:text-muse-rose rounded-full px-2.5 py-1.5 transition bg-white/5">
+                            <i class="fa-solid fa-volume-xmark"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Settings Popover (Inside Chat) -->
+                <div id="settings-popover" class="absolute top-16 right-4 z-50 bg-muse-panel border border-white/10 rounded-xl p-4 w-72 shadow-2xl hidden glass-panel animate-fade-in">
+                    <div class="flex justify-between items-center mb-3">
+                        <h4 class="text-xs text-muse-dim uppercase tracking-widest">Settings</h4>
+                        <button onclick="toggleSettings()" class="text-stone-500 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                    
+                    <div class="space-y-4 max-h-[60vh] overflow-y-auto no-scrollbar">
+                        <!-- Gender -->
+                        <div>
+                            <label class="text-[10px] text-stone-400 block mb-1">Target Gender</label>
+                            <select id="setting-gender" class="w-full bg-black/50 text-xs text-white border border-white/10 rounded p-2 focus:border-muse-rose outline-none" onchange="updateLiveSettings()">
+                                <option value="masculine">阳刚 (Masculine)</option>
+                                <option value="feminine">阴柔 (Feminine)</option>
+                                <option value="neutral">中性 (Neutral)</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Voice Selection with Indicator (Fixed) -->
+                        <div>
+                            <label class="text-[10px] text-stone-400 block mb-2">Voice Tone</label>
+                            <div class="space-y-2">
+                                <!-- Voice Option 1: Cherry -->
+                                <div class="voice-card border border-white/10 rounded p-2 flex items-center cursor-pointer hover:border-white/30 transition" onclick="selectVoice('yushao', this)">
+                                    <div class="mr-3 flex items-center justify-center">
+                                        <div class="w-4 h-4 rounded-full border border-stone-600 flex items-center justify-center">
+                                            <div class="indicator-dot"></div>
+                                        </div>
+                                    </div>
+                                    <div class="flex-1">
+                                        <div class="text-xs text-stone-300">🍷 低沉御少音</div>
+                                        <div class="text-[9px] text-stone-500">Cherry · 知性</div>
+                                    </div>
+                                    <button onclick="event.stopPropagation(); playSample('yushao', this)" class="text-muse-dim hover:text-muse-rose px-2"><i class="fa-solid fa-play"></i></button>
+                                </div>
+
+                                <!-- Voice Option 2: Siming -->
+                                <div class="voice-card border border-white/10 rounded p-2 flex items-center cursor-pointer hover:border-white/30 transition" onclick="selectVoice('shaonian', this)">
+                                    <div class="mr-3 flex items-center justify-center">
+                                        <div class="w-4 h-4 rounded-full border border-stone-600 flex items-center justify-center">
+                                            <div class="indicator-dot"></div>
+                                        </div>
+                                    </div>
+                                    <div class="flex-1">
+                                        <div class="text-xs text-stone-300">❄️ 清冷少年音</div>
+                                        <div class="text-[9px] text-stone-500">Siming · 清脆</div>
+                                    </div>
+                                    <button onclick="event.stopPropagation(); playSample('shaonian', this)" class="text-muse-dim hover:text-muse-rose px-2"><i class="fa-solid fa-play"></i></button>
+                                </div>
+
+                                <!-- Voice Option 3: Zhidar -->
+                                <div class="voice-card border border-white/10 rounded p-2 flex items-center cursor-pointer hover:border-white/30 transition" onclick="selectVoice('dashu', this)">
+                                    <div class="mr-3 flex items-center justify-center">
+                                        <div class="w-4 h-4 rounded-full border border-stone-600 flex items-center justify-center">
+                                            <div class="indicator-dot"></div>
+                                        </div>
+                                    </div>
+                                    <div class="flex-1">
+                                        <div class="text-xs text-stone-300">🥃 温柔大叔音</div>
+                                        <div class="text-[9px] text-stone-500">Zhidar · 沉稳</div>
+                                    </div>
+                                    <button onclick="event.stopPropagation(); playSample('dashu', this)" class="text-muse-dim hover:text-muse-rose px-2"><i class="fa-solid fa-play"></i></button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Atmosphere -->
+                        <div>
+                            <label class="text-[10px] text-stone-400 block mb-1">Atmosphere</label>
+                            <select id="setting-vibe" class="w-full bg-black/50 text-xs text-white border border-white/10 rounded p-2 focus:border-muse-rose outline-none" onchange="updateLiveSettings()">
+                                <option value="tension">暧昧拉扯 (Tension)</option>
+                                <option value="romantic">浪漫唯美 (Romantic)</option>
+                                <option value="taboo">禁忌刺激 (Taboo)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="chat-history" class="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar pb-4"></div>
+                
+                <!-- Input Area -->
+                <div class="p-4 bg-muse-black border-t border-white/5 pb-safe-bottom">
+                    <div class="relative max-w-2xl mx-auto flex gap-2">
+                        <button id="mic-btn" onmousedown="startListening()" onmouseup="stopListening()" ontouchstart="startListening()" ontouchend="stopListening()" class="bg-white/5 hover:bg-white/10 text-muse-dim hover:text-muse-rose rounded-full w-12 h-12 flex items-center justify-center transition border border-white/10 shrink-0">
+                            <i class="fa-solid fa-microphone"></i>
+                        </button>
+                        
+                        <div class="flex-1 relative">
+                            <input type="text" id="story-input" placeholder="输入或按住说话..." 
+                                   class="w-full h-12 bg-white/5 border border-white/10 rounded-full pl-6 pr-12 text-sm text-muse-gold focus:outline-none focus:border-muse-rose focus:bg-white/10 transition"
+                                   onkeypress="if(event.key==='Enter') continueStory()">
+                            <button onclick="continueStory()" class="absolute right-2 top-2 p-2 text-muse-dim hover:text-muse-rose transition bg-white/5 rounded-full hover:bg-white/10 w-8 h-8 flex items-center justify-center">
+                                <i class="fa-solid fa-paper-plane text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- API Key Modal -->
+    <div id="apikey-modal" class="fixed inset-0 z-[70] hidden bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="glass-panel max-w-md w-full p-8 rounded-lg">
+            <h3 class="font-serif text-xl text-muse-gold mb-2">Settings</h3>
+            <div class="flex gap-2 mb-4 bg-white/5 p-1 rounded">
+                <button onclick="switchProvider('gemini')" id="btn-gemini" class="flex-1 py-2 text-xs rounded transition text-white bg-muse-rose">GEMINI</button>
+                <button onclick="switchProvider('dashscope')" id="btn-dashscope" class="flex-1 py-2 text-xs rounded transition text-stone-400">ALIYUN</button>
+            </div>
+            <div id="input-group-gemini">
+                <input type="password" id="gemini-key-input" placeholder="Paste Gemini Key..." class="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-muse-gold mb-4 text-sm">
+            </div>
+            <div id="input-group-dashscope" class="hidden">
+                <input type="password" id="dashscope-key-input" placeholder="Paste DashScope Key..." class="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-muse-gold mb-4 text-sm">
+            </div>
+            <button onclick="saveApiSettings()" class="w-full bg-white/10 hover:bg-muse-rose text-white py-2 rounded text-xs tracking-widest">SAVE</button>
+            <button onclick="document.getElementById('apikey-modal').classList.add('hidden')" class="w-full mt-2 text-stone-500 text-xs hover:text-white">CLOSE</button>
+        </div>
+    </div>
+
+    <script>
+        // ========== 1. Ultra-Smooth Slideshow Fix ==========
+        const backgroundImages = [
+            "https://images.unsplash.com/photo-1596704017254-9b121068fb31?q=80&w=1920&auto=format&fit=crop", 
+            "https://images.unsplash.com/photo-1534308143481-c55f00be8bd7?q=80&w=1920&auto=format&fit=crop", 
+            "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?q=80&w=1920&auto=format&fit=crop", 
+            "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=1920&auto=format&fit=crop" 
+        ];
+
+        function initSlideshow() {
+            const container = document.getElementById('slideshow-container');
+            const oldImages = container.querySelectorAll('img');
+            oldImages.forEach(img => img.remove());
+
+            // Create images
+            backgroundImages.forEach((src, index) => {
+                const img = document.createElement('img');
+                img.src = src;
+                // Double Buffer Strategy:
+                // Only mark the first one active initially.
+                // Others are hidden (opacity 0).
+                img.className = `slide-image absolute inset-0 w-full h-full object-cover transition-opacity duration-[3000ms] ease-in-out`;
+                img.style.opacity = index === 0 ? '1' : '0';
+                img.style.zIndex = index === 0 ? '2' : '0';
+                container.insertBefore(img, container.firstChild);
+            });
+            
+            let slideIndex = 0;
+            
+            setInterval(() => {
+                const images = container.querySelectorAll('img');
+                const currentImg = images[slideIndex];
+                
+                slideIndex = (slideIndex + 1) % images.length;
+                const nextImg = images[slideIndex];
+                
+                // 1. Keep 'current' visible behind (zIndex 1)
+                currentImg.classList.add('previous');
+                currentImg.classList.remove('active');
+                currentImg.style.zIndex = '1';
+                
+                // 2. Fade in 'next' on top (zIndex 2)
+                nextImg.classList.add('active');
+                nextImg.style.zIndex = '2';
+                nextImg.style.opacity = '1'; // Trigger fade in
+                
+                // 3. Clean up AFTER transition completes
+                setTimeout(() => {
+                    currentImg.classList.remove('previous');
+                    currentImg.style.opacity = '0'; // Hide old one
+                    currentImg.style.zIndex = '0';
+                    currentImg.style.transform = 'scale(1.1)'; // Reset zoom
+                }, 3000); // Matches CSS transition duration
+                
+            }, 6000);
+        }
+
+        // ========== 2. Prism Logic ==========
+        const quizData = [
+            { id: 'orientation', question: "你的心，被什么吸引？", options: [{ label: "阳刚气质 (Masculinity)", value: "masculine" }, { label: "阴柔气质 (Femininity)", value: "feminine" }, { label: "掌控与主导 (Dominance)", value: "dom" }, { label: "灵魂共鸣 (Soul)", value: "fluid" }] },
+            { id: 'atmosphere', question: "你偏爱怎样的氛围？", options: [{ label: "暧昧拉扯 (Tension)", value: "tension" }, { label: "禁忌刺激 (Taboo)", value: "taboo" }, { label: "温柔治愈 (Gentle)", value: "gentle" }, { label: "绝对服从 (Submission)", value: "submission" }] },
+            { id: 'style', question: "剧本风格偏好？", options: [{ label: "唯美含蓄 (Poetic)", value: "poetic" }, { label: "直白炽热 (Intense)", value: "intense" }] }
+        ];
+        let currentStep = 0;
+        let userProfile = { orientation: 'masculine', atmosphere: 'tension', style: 'poetic' };
+
+        function enterPrism() {
+            document.getElementById('landing-page').style.opacity = '0';
+            document.getElementById('global-nav').classList.add('hidden');
+            setTimeout(() => {
+                document.getElementById('landing-page').style.display = 'none';
+                document.getElementById('prism-modal').classList.remove('hidden');
+                renderQuestion();
+            }, 500);
+        }
+        function closePrism() {
+            const hasProfile = localStorage.getItem('muse_profile');
+            document.getElementById('prism-modal').classList.add('hidden');
+            if(hasProfile) {
+                document.getElementById('main-content').classList.remove('hidden');
+                document.getElementById('main-content').classList.add('flex');
+                document.getElementById('global-nav').classList.remove('hidden');
+                setTimeout(() => document.getElementById('main-content').classList.remove('opacity-0'), 100);
+            } else {
+                document.getElementById('landing-page').style.display = 'flex';
+                document.getElementById('global-nav').classList.remove('hidden');
+                setTimeout(() => document.getElementById('landing-page').style.opacity = '1', 50);
+            }
+        }
+        function renderQuestion() {
+            const q = quizData[currentStep];
+            const container = document.getElementById('question-container');
+            document.getElementById('prism-step-indicator').innerText = `STEP ${currentStep + 1} / ${quizData.length}`;
+            let html = `<h3 class="text-2xl font-serif text-white mb-8 animate-fade-in">${q.question}</h3><div class="grid grid-cols-1 gap-3 animate-fade-in">`;
+            q.options.forEach(opt => {
+                const isSelected = userProfile[q.id] === opt.value;
+                html += `<div onclick="selectOption('${q.id}', '${opt.value}')" class="cursor-pointer border border-white/10 rounded-lg p-4 transition-all hover:bg-white/5 hover:border-muse-rose/50 ${isSelected ? 'selected-option' : ''}"><div class="font-serif text-lg">${opt.label}</div></div>`;
+            });
+            container.innerHTML = html + `</div>`;
+            document.getElementById('prev-btn').style.visibility = currentStep > 0 ? 'visible' : 'hidden';
+        }
+        function selectOption(key, value) {
+            userProfile[key] = value;
+            renderQuestion();
+            setTimeout(() => {
+                if(currentStep < quizData.length - 1) { currentStep++; renderQuestion(); } else { finishPrism(); }
+            }, 300);
+        }
+        function prevQuestion() { if(currentStep>0) { currentStep--; renderQuestion(); } }
+        function finishPrism() {
+            localStorage.setItem('muse_profile', JSON.stringify(userProfile));
+            closePrism(); updateLiveSettings();
+        }
+        function openPrism() {
+            document.getElementById('main-content').classList.add('hidden');
+            document.getElementById('prism-modal').classList.remove('hidden');
+            currentStep = 0; renderQuestion();
+        }
+
+        // ========== 3. Voice Logic (Fixed with DashScope OpenAI Compatible API) ==========
+        let currentVoice = 'yushao';
+        
+        async function playSample(type, btnElement) {
+            if (window.currentAudio) window.currentAudio.pause();
+            
+            let text = "";
+            if (type === 'yushao') text = "过来，不用说话，听我就好。";
+            else if (type === 'shaonian') text = "别离我太近，我怕控制不住。";
+            else if (type === 'dashu') text = "把手给我，慢慢来，没关系的。";
+            
+            if (getApiKey('dashscope')) {
+                const btnIcon = btnElement.querySelector('i');
+                const originalClass = btnIcon.className;
+                btnIcon.className = "fa-solid fa-circle-notch fa-spin";
+                
+                try {
+                    const audioBlob = await callDashScopeTTS(text, type);
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    const audio = new Audio(audioUrl);
+                    window.currentAudio = audio;
+                    await audio.play();
+                    btnIcon.className = originalClass;
+                    return;
+                } catch (e) {
+                    console.warn("TTS Error:", e);
+                    btnIcon.className = originalClass;
+                }
+            }
+            speakTextFallback(text, type);
+        }
+        
+        async function speakText(text, type) {
+            if (window.currentAudio) window.currentAudio.pause();
+            
+            if (getApiKey('dashscope')) {
+                try {
+                    const audioBlob = await callDashScopeTTS(text, type);
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    const audio = new Audio(audioUrl);
+                    window.currentAudio = audio;
+                    audio.play();
+                    return;
+                } catch (e) { console.warn("TTS Fallback", e); }
+            }
+            speakTextFallback(text, type);
+        }
+
+        // Use Browser Fallback if API fails
+        function speakTextFallback(text, type) {
+            if(!window.speechSynthesis) return;
+            window.speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(text);
+            u.lang = 'zh-CN';
+            if(type === 'yushao') { u.pitch = 0.7; u.rate = 0.8; }
+            else if(type === 'shaonian') { u.pitch = 1.2; u.rate = 1.0; }
+            else if(type === 'dashu') { u.pitch = 0.5; u.rate = 0.85; }
+            window.speechSynthesis.speak(u);
+        }
+        
+        // Use OpenAI Compatible Endpoint for DashScope TTS (Standard Model qwen3-tts-flash)
+        async function callDashScopeTTS(text, voiceType) {
+            const apiKey = getApiKey('dashscope');
+            if (!apiKey) throw new Error("No Key");
+
+            // Valid voices for qwen3-tts-flash are generic or specific CosyVoice ones. 
+            // Using standard mappings known to work with DashScope's new endpoints.
+            let voice = 'Cherry'; 
+            if (voiceType === 'yushao') voice = 'Cherry'; 
+            if (voiceType === 'shaonian') voice = 'Siming'; 
+            if (voiceType === 'dashu') voice = 'Zhidar'; 
+
+            const url = "https://dashscope.aliyuncs.com/compatible-mode/v1/audio/speech";
+            
+            const payload = {
+                "model": "qwen3-tts-flash",
+                "input": text,
+                "voice": voice
+            };
+
+            const res = await fetch(url, {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${apiKey}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!res.ok) throw new Error("API Error");
+            return await res.blob(); // Get binary audio
+        }
+
+        function selectVoice(type, el) {
+            currentVoice = type;
+            localStorage.setItem('muse_voice_type', type);
+            // Visual Update
+            document.querySelectorAll('.voice-card').forEach(c => c.classList.remove('selected'));
+            if(el) el.classList.add('selected');
+            updateLiveSettings();
+        }
+
+        // ========== AI & Story ==========
+        let activeProvider = localStorage.getItem('muse_ai_provider') || 'gemini';
+        let voiceEnabled = false;
+        
+        let recognition;
+        function initRecognition() {
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+                recognition.lang = 'zh-CN';
+                recognition.continuous = false;
+                recognition.interimResults = false;
+                recognition.onstart = () => document.getElementById('mic-btn').classList.add('text-muse-rose', 'border-muse-rose');
+                recognition.onend = () => document.getElementById('mic-btn').classList.remove('text-muse-rose', 'border-muse-rose');
+                recognition.onresult = (event) => {
+                    document.getElementById('story-input').value = event.results[0][0].transcript;
+                    document.getElementById('story-input').focus();
+                };
+            }
+        }
+        function startListening() { if(recognition) recognition.start(); else initRecognition(); }
+        function stopListening() { if(recognition) recognition.stop(); }
+
+        function toggleVoiceOutput() {
+            voiceEnabled = !voiceEnabled;
+            const btn = document.getElementById('tts-toggle');
+            if(voiceEnabled) {
+                btn.innerHTML = '<i class="fa-solid fa-volume-high"></i>';
+                btn.classList.add('text-muse-rose', 'border-muse-rose');
+            } else {
+                btn.innerHTML = '<i class="fa-solid fa-volume-xmark"></i>';
+                btn.classList.remove('text-muse-rose', 'border-muse-rose');
+                if(window.currentAudio) window.currentAudio.pause();
+                window.speechSynthesis.cancel();
+            }
+        }
+
+        function toggleSettings() {
+            const pop = document.getElementById('settings-popover');
+            pop.classList.toggle('hidden');
+            const savedVoice = localStorage.getItem('muse_voice_type') || 'yushao';
+            const activeCard = document.querySelector(`.voice-card[onclick*="'${savedVoice}'"]`);
+            if(activeCard) selectVoice(savedVoice, activeCard);
+        }
+        
+        function updateLiveSettings() {
+            userProfile.orientation = document.getElementById('setting-gender').value;
+            userProfile.atmosphere = document.getElementById('setting-vibe').value;
+            currentVoice = localStorage.getItem('muse_voice_type') || 'yushao';
+            document.getElementById('current-persona-label').innerText = `${userProfile.orientation} / ${currentVoice}`;
+        }
+
+        let storyContext = "";
+        function startStory(scene) {
+            document.getElementById('scenario-selector').classList.add('hidden');
+            document.getElementById('chat-interface').classList.remove('hidden');
+            document.getElementById('chat-interface').classList.add('flex');
+            document.getElementById('global-nav').classList.add('hidden');
+            
+            const target = userProfile.orientation === 'feminine' ? '她' : '他';
+            let intro = "";
+            if(scene === 'elevator') intro = `电梯故障。${target}在黑暗中看向你...`;
+            else intro = `雨夜。${target}靠近了你...`;
+            
+            storyContext = `Scene:${scene}. Target:${target}. Mood:${userProfile.atmosphere}.`;
+            addBubble(intro, 'ai');
+            initRecognition();
+        }
+
+        function exitStory() {
+            document.getElementById('chat-interface').classList.remove('flex');
+            document.getElementById('chat-interface').classList.add('hidden');
+            document.getElementById('scenario-selector').classList.remove('hidden');
+            document.getElementById('chat-history').innerHTML = '';
+            document.getElementById('global-nav').classList.remove('hidden');
+        }
+
+        async function continueStory() {
+            const input = document.getElementById('story-input');
+            const val = input.value.trim();
+            if(!val) return;
+            addBubble(val, 'user');
+            input.value = '';
+            
+            const loadingId = addBubble('...', 'ai', true);
+            const system = `Roleplay. Target:${userProfile.orientation}, Voice:${currentVoice}. Mood:${userProfile.atmosphere}. Reply in Chinese, immersive, sensual.`;
+            const res = await callAI(`Context:${storyContext}\nAction:${val}`, system);
+            
+            document.getElementById(loadingId).remove();
+            addBubble(res, 'ai');
+            storyContext += `\nUser:${val}\nAI:${res}`;
+            
+            if(voiceEnabled) speakText(res.replace(/[*#]/g, ''), currentVoice);
+        }
+
+        function addBubble(text, role, loading=false) {
+            const div = document.createElement('div');
+            div.className = `flex w-full ${role==='user'?'justify-end':'justify-start'}`;
+            div.id = 'msg-' + Date.now();
+            const bubble = document.createElement('div');
+            bubble.className = `max-w-[85%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${role==='user'?'bg-muse-rose/20 text-white border border-muse-rose/30 rounded-tr-none':'bg-white/10 text-muse-gold border border-white/5 rounded-tl-none font-serif'}`;
+            if(loading) bubble.classList.add('animate-pulse');
+            bubble.innerHTML = loading ? text : marked.parse(text);
+            div.appendChild(bubble);
+            document.getElementById('chat-history').appendChild(div);
+            document.getElementById('chat-history').scrollTop = document.getElementById('chat-history').scrollHeight;
+            return div.id;
+        }
+
+        // Utils & Init
+        function getApiKey(p=activeProvider) { 
+            return p==='gemini' ? localStorage.getItem('muse_gemini_apikey') : localStorage.getItem('muse_dashscope_apikey'); 
+        }
+        function openApiKeySettings() { 
+            document.getElementById('apikey-modal').classList.remove('hidden');
+            document.getElementById('gemini-key-input').value = localStorage.getItem('muse_gemini_apikey')||'';
+            document.getElementById('dashscope-key-input').value = localStorage.getItem('muse_dashscope_apikey')||'';
+        }
+        function saveApiSettings() {
+            const k1 = document.getElementById('gemini-key-input').value;
+            const k2 = document.getElementById('dashscope-key-input').value;
+            if(k1) localStorage.setItem('muse_gemini_apikey', k1);
+            if(k2) localStorage.setItem('muse_dashscope_apikey', k2);
+            document.getElementById('apikey-modal').classList.add('hidden');
+        }
+        function switchProvider(p) {
+            activeProvider = p;
+            localStorage.setItem('muse_ai_provider', p);
+            document.getElementById('input-group-gemini').className = p==='gemini'?'':'hidden';
+            document.getElementById('input-group-dashscope').className = p==='dashscope'?'':'hidden';
+            document.getElementById('btn-gemini').className = p==='gemini'?'flex-1 py-2 text-xs rounded transition text-white bg-muse-rose':'flex-1 py-2 text-xs rounded transition text-stone-400';
+            document.getElementById('btn-dashscope').className = p==='dashscope'?'flex-1 py-2 text-xs rounded transition text-white bg-muse-rose':'flex-1 py-2 text-xs rounded transition text-stone-400';
+        }
+        async function callAI(prompt, system, json=false) {
+            const key = getApiKey();
+            if(!key) { openApiKeySettings(); return "请先配置 Key"; }
+            try {
+                if(activeProvider === 'gemini') {
+                    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${key}`;
+                    const body = { contents: [{parts:[{text: prompt}]}], systemInstruction:{parts:[{text:system}]} };
+                    if(json) body.generationConfig = { responseMimeType: "application/json" };
+                    const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+                    const data = await res.json();
+                    return data.candidates?.[0]?.content?.parts?.[0]?.text || "Error";
+                } else {
+                    const url = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
+                    const res = await fetch(url, {
+                        method:'POST', headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${key}` },
+                        body: JSON.stringify({ model:'qwen-plus', messages:[{role:'system',content:system},{role:'user',content:prompt}] })
+                    });
+                    const data = await res.json();
+                    return data.choices?.[0]?.message?.content || "Error";
+                }
+            } catch(e) { return "Network Error"; }
+        }
+        
+        async function generateScript() {
+            const input = document.getElementById('script-prompt');
+            const resDiv = document.getElementById('script-result');
+            if(!input.value) return;
+            document.getElementById('script-btn').innerText = "...";
+            resDiv.classList.remove('hidden'); resDiv.innerHTML = "Thinking...";
+            const text = await callAI(input.value, "Write a short sensual monologue. Chinese. 150 words.");
+            resDiv.innerHTML = marked.parse(text);
+            document.getElementById('script-btn').innerText = "GENERATE";
+        }
+
+        window.onload = () => {
+            initSlideshow();
+            initRecognition();
+            const saved = localStorage.getItem('muse_profile');
+            if(saved) {
+                userProfile = JSON.parse(saved);
+                document.getElementById('setting-gender').value = userProfile.orientation || 'masculine';
+                document.getElementById('setting-vibe').value = userProfile.atmosphere || 'tension';
+                updateLiveSettings();
+            }
+            switchProvider(localStorage.getItem('muse_ai_provider')||'gemini');
+        };
+    </script>
+</body>
+</html>

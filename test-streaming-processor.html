@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StreamingProcessor Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #333;
+            border-radius: 8px;
+            background-color: #2a2a2a;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 8px;
+            border-radius: 4px;
+        }
+        .test-pass {
+            background-color: #1a4a1a;
+            border-left: 4px solid #4CAF50;
+        }
+        .test-fail {
+            background-color: #4a1a1a;
+            border-left: 4px solid #f44336;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .status {
+            background-color: #333;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>StreamingProcessor Test Suite</h1>
+    
+    <div class="test-section">
+        <h2>Test Controls</h2>
+        <button onclick="runAllTests()">Run All Tests</button>
+        <button onclick="testBasicFunctionality()">Test Basic Functionality</button>
+        <button onclick="testBase64Conversion()">Test Base64 Conversion</button>
+        <button onclick="testStreamingProcess()">Test Streaming Process</button>
+        <button onclick="clearResults()">Clear Results</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test Results</h2>
+        <div id="test-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>StreamingProcessor Status</h2>
+        <div id="status" class="status">Not initialized</div>
+        <button onclick="updateStatus()">Update Status</button>
+    </div>
+
+    <script src="js/tts/StreamingProcessor.js"></script>
+    <script>
+        let processor = null;
+        let testResults = [];
+
+        function logResult(testName, passed, message = '') {
+            const result = {
+                name: testName,
+                passed: passed,
+                message: message,
+                timestamp: new Date().toLocaleTimeString()
+            };
+            testResults.push(result);
+            displayResults();
+        }
+
+        function displayResults() {
+            const resultsDiv = document.getElementById('test-results');
+            resultsDiv.innerHTML = testResults.map(result => `
+                <div class="test-result ${result.passed ? 'test-pass' : 'test-fail'}">
+                    <strong>${result.passed ? '✓' : '✗'} ${result.name}</strong>
+                    <br>
+                    <small>${result.timestamp}</small>
+                    ${result.message ? `<br><em>${result.message}</em>` : ''}
+                </div>
+            `).join('');
+        }
+
+        function clearResults() {
+            testResults = [];
+            displayResults();
+        }
+
+        function updateStatus() {
+            if (processor) {
+                const status = processor.getStatus();
+                document.getElementById('status').innerHTML = `
+                    <strong>StreamingProcessor Status:</strong><br>
+                    Is Streaming: ${status.isStreaming}<br>
+                    Is Processing: ${status.isProcessing}<br>
+                    Queue Length: ${status.queueLength}<br>
+                    Buffer Size: ${status.bufferSize}<br>
+                    Currently Playing: ${status.currentlyPlaying}
+                `;
+            } else {
+                document.getElementById('status').innerHTML = 'Processor not initialized';
+            }
+        }
+
+        function testBasicFunctionality() {
+            try {
+                processor = new StreamingProcessor();
+                
+                // Test initialization
+                if (processor.isStreaming === false && 
+                    processor.audioQueue instanceof Array && 
+                    processor.currentAudio === null) {
+                    logResult('Basic Initialization', true, 'All properties initialized correctly');
+                } else {
+                    logResult('Basic Initialization', false, 'Properties not initialized correctly');
+                }
+
+                // Test configuration
+                processor.configure({
+                    bufferSize: 10,
+                    chunkTimeout: 8000,
+                    maxQueueSize: 30
+                });
+
+                if (processor.bufferSize === 10 && 
+                    processor.chunkTimeout === 8000 && 
+                    processor.maxQueueSize === 30) {
+                    logResult('Configuration', true, 'Configuration applied correctly');
+                } else {
+                    logResult('Configuration', false, 'Configuration not applied correctly');
+                }
+
+                // Test configuration limits
+                processor.configure({
+                    bufferSize: 0,    // Should be clamped to 1
+                    chunkTimeout: 500, // Should be clamped to 1000
+                    maxQueueSize: 200  // Should be clamped to 100
+                });
+
+                if (processor.bufferSize === 1 && 
+                    processor.chunkTimeout === 1000 && 
+                    processor.maxQueueSize === 100) {
+                    logResult('Configuration Limits', true, 'Configuration limits enforced correctly');
+                } else {
+                    logResult('Configuration Limits', false, 'Configuration limits not enforced');
+                }
+
+                updateStatus();
+
+            } catch (error) {
+                logResult('Basic Functionality', false, `Error: ${error.message}`);
+            }
+        }
+
+        function testBase64Conversion() {
+            try {
+                if (!processor) {
+                    processor = new StreamingProcessor();
+                }
+
+                // Test basic base64 conversion
+                const base64Data = 'SGVsbG8gV29ybGQ='; // "Hello World" in base64
+                const blob = processor.base64ToBlob(base64Data);
+
+                if (blob instanceof Blob && blob.type === 'audio/mpeg') {
+                    logResult('Base64 Conversion', true, 'Base64 converted to blob successfully');
+                } else {
+                    logResult('Base64 Conversion', false, 'Base64 conversion failed');
+                }
+
+                // Test base64 with data URL prefix
+                const dataUrlBase64 = 'data:audio/mpeg;base64,SGVsbG8gV29ybGQ=';
+                const blob2 = processor.base64ToBlob(dataUrlBase64);
+
+                if (blob2 instanceof Blob && blob2.type === 'audio/mpeg') {
+                    logResult('Base64 with Data URL', true, 'Data URL prefix handled correctly');
+                } else {
+                    logResult('Base64 with Data URL', false, 'Data URL prefix not handled correctly');
+                }
+
+                // Test invalid base64
+                try {
+                    processor.base64ToBlob('invalid-base64-data!!!');
+                    logResult('Invalid Base64 Handling', false, 'Should have thrown an error');
+                } catch (error) {
+                    logResult('Invalid Base64 Handling', true, 'Invalid base64 error handled correctly');
+                }
+
+            } catch (error) {
+                logResult('Base64 Conversion', false, `Error: ${error.message}`);
+            }
+        }
+
+        async function testStreamingProcess() {
+            try {
+                if (!processor) {
+                    processor = new StreamingProcessor();
+                }
+
+                // Test chunk format conversion
+                const base64Chunk = 'SGVsbG8gV29ybGQ=';
+                const blob1 = await processor.convertChunkToBlob(base64Chunk);
+                
+                if (blob1 instanceof Blob) {
+                    logResult('Chunk Conversion - Base64', true, 'Base64 chunk converted successfully');
+                } else {
+                    logResult('Chunk Conversion - Base64', false, 'Base64 chunk conversion failed');
+                }
+
+                // Test ArrayBuffer conversion
+                const arrayBuffer = new ArrayBuffer(8);
+                const blob2 = await processor.convertChunkToBlob(arrayBuffer);
+                
+                if (blob2 instanceof Blob) {
+                    logResult('Chunk Conversion - ArrayBuffer', true, 'ArrayBuffer chunk converted successfully');
+                } else {
+                    logResult('Chunk Conversion - ArrayBuffer', false, 'ArrayBuffer chunk conversion failed');
+                }
+
+                // Test Blob passthrough
+                const inputBlob = new Blob(['test'], { type: 'audio/mpeg' });
+                const blob3 = await processor.convertChunkToBlob(inputBlob);
+                
+                if (blob3 === inputBlob) {
+                    logResult('Chunk Conversion - Blob', true, 'Blob passthrough works correctly');
+                } else {
+                    logResult('Chunk Conversion - Blob', false, 'Blob passthrough failed');
+                }
+
+                // Test unsupported format
+                try {
+                    await processor.convertChunkToBlob(123);
+                    logResult('Unsupported Format Handling', false, 'Should have thrown an error');
+                } catch (error) {
+                    logResult('Unsupported Format Handling', true, 'Unsupported format error handled correctly');
+                }
+
+                // Test DashScope stream data processing
+                const streamData = {
+                    output: {
+                        audio: 'SGVsbG8gV29ybGQ='
+                    }
+                };
+
+                await processor.processDashScopeStream(streamData);
+                logResult('DashScope Stream Processing', true, 'DashScope stream data processed successfully');
+
+                updateStatus();
+
+            } catch (error) {
+                logResult('Streaming Process', false, `Error: ${error.message}`);
+            }
+        }
+
+        async function runAllTests() {
+            clearResults();
+            logResult('Test Suite Started', true, 'Running all tests...');
+            
+            testBasicFunctionality();
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            testBase64Conversion();
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            await testStreamingProcess();
+            
+            logResult('Test Suite Completed', true, `${testResults.filter(r => r.passed).length}/${testResults.length} tests passed`);
+        }
+
+        // Initialize on page load
+        window.onload = function() {
+            logResult('Page Loaded', true, 'StreamingProcessor test page ready');
+        };
+    </script>
+</body>
+</html>

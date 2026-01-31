@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Muse | 她的情欲画廊</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        muse: {
+                            black: '#050505',
+                            dark: '#0a0a0a',
+                            panel: '#121212',
+                            rose: '#e11d48', 
+                            gold: '#e5e5e5',
+                            dim: '#525252',
+                        }
+                    },
+                    fontFamily: {
+                        serif: ['"Playfair Display"', 'serif'],
+                        sans: ['"Lato"', 'sans-serif'],
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 1.5s ease-out forwards',
+                        'pulse-slow': 'pulse 3s infinite',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: 0, transform: 'translateY(10px)' },
+                            '100%': { opacity: 1, transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* === Background Slideshow === */
+        .hero-slideshow {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 0;
+            overflow: hidden;
+        }
+        .slide-image {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            object-fit: cover;
+            opacity: 0;
+            /* 加快切换速度：淡入淡出 1.5s，缩放 5s */
+            transition: opacity 1.5s ease-in-out, transform 5s ease-out; 
+            filter: contrast(1.2) brightness(0.6) saturate(1.1) blur(2px); /* 增加模糊感 */
+            transform: scale(1.1);
+        }
+        .slide-image.active {
+            opacity: 0.8; 
+            transform: scale(1);
+        }
+
+        /* === Typography & Effects === */
+        .flow-text-layer {
+            font-family: "Playfair Display", serif; 
+            color: rgba(255, 255, 255, 0.95);
+            text-shadow: 0 0 40px rgba(225, 29, 72, 0.6); 
+            letter-spacing: 0.15em;
+            mix-blend-mode: overlay;
+        }
+
+        /* Glass Panel */
+        .glass-panel { 
+            background: rgba(10, 10, 10, 0.6); 
+            backdrop-filter: blur(16px); 
+            -webkit-backdrop-filter: blur(16px); 
+            border: 1px solid rgba(255, 255, 255, 0.08); 
+        }
+
+        /* Recording Animation */
+        .recording-pulse {
+            box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.7);
+            animation: recordPulse 1.5s infinite cubic-bezier(0.66, 0, 0, 1);
+        }
+        @keyframes recordPulse {
+            to { box-shadow: 0 0 0 10px rgba(225, 29, 72, 0); }
+        }
+
+        .selected-option { background: rgba(225, 29, 72, 0.2); border-color: #e11d48; color: #e5e5e5; }
+    </style>
+</head>
+<body class="bg-muse-black text-muse-gold font-sans antialiased overflow-x-hidden selection:bg-muse-rose selection:text-white">
+
+    <!-- 1. HERO SECTION -->
+    <section id="landing-page" class="relative w-full h-screen overflow-hidden flex flex-col items-center justify-center z-50 bg-muse-black">
+        
+        <div class="hero-slideshow" id="slideshow-container">
+            <div class="absolute inset-0 bg-gradient-to-b from-muse-black/30 via-transparent to-muse-black/90 z-10"></div>
+            <div class="absolute inset-0 opacity-[0.1] z-10" style="background-image: url('https://grainy-gradients.vercel.app/noise.svg');"></div>
+        </div>
+
+        <div class="relative z-20 text-center px-6 flex flex-col items-center">
+            <div class="mb-8 animate-fade-in">
+                <h1 class="flow-text-layer text-7xl md:text-[10rem] font-black leading-none select-none">
+                    MUSE
+                </h1>
+            </div>
+
+            <p class="font-serif italic text-white/70 text-lg md:text-xl mb-12 animate-fade-in mix-blend-screen" style="animation-delay: 0.2s;">
+                你的欲望。你的叙事。
+            </p>
+            
+            <div class="animate-fade-in" style="animation-delay: 0.4s;">
+                <button onclick="enterPrism()" class="group relative px-10 py-4 overflow-hidden rounded-full border border-white/20 hover:border-muse-rose transition-all duration-500 bg-white/5 backdrop-blur-md">
+                    <div class="absolute inset-0 w-0 bg-muse-rose/40 transition-all duration-500 ease-out group-hover:w-full"></div>
+                    <span class="relative font-serif text-xs tracking-[0.25em] text-white group-hover:text-white transition-colors duration-300 uppercase">
+                        今晚你也睡不着吗？
+                    </span>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- 2. The Prism (Quiz) - Inclusive Update -->
+    <section id="prism-modal" class="fixed inset-0 z-[60] hidden bg-muse-black/95 backdrop-blur-xl flex items-center justify-center p-6 transition-opacity duration-500 overflow-y-auto">
+        <div class="max-w-xl w-full">
+            <div class="mb-8 flex justify-between items-end border-b border-white/10 pb-4">
+                <h2 class="font-serif text-3xl text-muse-gold">The Prism</h2>
+                <span class="text-xs text-muse-dim tracking-widest" id="prism-step-indicator">STEP 1 / 3</span>
+            </div>
+            <div id="question-container" class="min-h-[300px] flex flex-col justify-center animate-fade-in"></div>
+            
+            <div class="flex justify-between mt-8">
+                <button onclick="prevQuestion()" id="prev-btn" class="text-muse-dim hover:text-white text-xs tracking-widest invisible flex items-center gap-2">
+                    <i class="fa-solid fa-arrow-left"></i> BACK
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- 3. Main Dashboard - Mobile Scroll Fix -->
+    <!-- MD:flex-row (Desktop split), Flex-col (Mobile stack), Overlay-y-auto (Allow scrolling on mobile) -->
+    <main id="main-content" class="fixed inset-0 top-0 w-full h-full hidden flex-col md:flex-row z-40 bg-muse-black transition-opacity duration-1000 opacity-0 overflow-y-auto md:overflow-hidden">
+        
+        <!-- Mobile Sticky Header -->
+        <div class="sticky top-0 z-50 flex justify-between items-center p-4 bg-muse-black/80 backdrop-blur-md md:absolute md:top-6 md:right-6 md:bg-transparent md:p-0 md:justify-end">
+            <div class="md:hidden font-serif text-muse-gold tracking-widest">MUSE</div>
+            <div class="flex gap-4 items-center">
+                <button onclick="openOracle()" class="group flex items-center gap-2 text-[10px] text-muse-gold hover:text-white tracking-widest transition px-3 py-1 rounded-full border border-muse-gold/20 hover:border-muse-rose/50 bg-black/20 backdrop-blur-sm">
+                    <span class="text-sm group-hover:animate-pulse">🔮</span> ORACLE
+                </button>
+                <button onclick="openPrism()" class="text-[10px] text-muse-dim hover:text-white tracking-widest transition">PROFILE</button>
+                <button onclick="openApiKeySettings()" class="text-[10px] text-muse-dim hover:text-white tracking-widest transition">KEY</button>
+            </div>
+        </div>
+
+        <!-- Left: AI Solo Fantasy (Scripter) -->
+        <!-- Min-height ensures it doesn't collapse on mobile -->
+        <div class="relative w-full md:w-5/12 min-h-[80vh] md:h-full border-b md:border-b-0 md:border-r border-white/5 flex flex-col bg-muse-panel shrink-0">
+            <div class="absolute inset-0 overflow-hidden pointer-events-none">
+                <div class="absolute -top-[20%] -left-[20%] w-[150%] h-[150%] bg-[url('https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=1000&auto=format&fit=crop')] bg-cover opacity-10 blur-sm mix-blend-overlay"></div>
+                <div class="absolute inset-0 bg-gradient-to-t from-muse-panel via-muse-panel/90 to-transparent"></div>
+            </div>
+            
+            <div class="relative z-10 flex-1 flex flex-col p-8 md:p-12 justify-center">
+                <span class="text-muse-rose/80 text-[10px] tracking-[0.3em] uppercase mb-3 flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-muse-rose animate-pulse"></span>Solo Fantasy
+                </span>
+                <h2 class="font-serif text-3xl md:text-4xl text-muse-gold mb-4">幻想编剧</h2>
+                <p class="text-muse-dim text-sm mb-8 font-light leading-relaxed max-w-sm">
+                    不需要具体的对象，只需要一个瞬间。<br>输入一个关键词，Muse 为你生成一段关于声音、气味与触觉的私密独白。
+                </p>
+                <div class="space-y-4">
+                    <input type="text" id="script-prompt" placeholder="例如：暴雨夜、淡淡的烟草味..." class="w-full bg-black/30 border border-white/10 rounded-lg p-4 text-muse-gold placeholder-muse-dim focus:outline-none focus:border-muse-rose transition backdrop-blur-sm text-sm">
+                    <button onclick="generateScript()" id="script-btn" class="w-full py-3 bg-white/5 hover:bg-muse-rose text-white text-xs tracking-[0.2em] rounded-lg transition duration-500 border border-white/5 hover:border-transparent">
+                        GENERATE
+                    </button>
+                    <!-- Result Area (Auto expand) -->
+                    <div id="script-result" class="hidden mt-6 p-6 border-l border-muse-rose/30 bg-white/5 rounded-r-lg text-muse-gold/90 text-sm font-serif leading-loose italic max-h-[40vh] overflow-y-auto no-scrollbar animate-fade-in"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Interactive Story -->
+        <div class="relative w-full md:w-7/12 min-h-[100vh] md:h-full flex flex-col bg-muse-black">
+            
+            <!-- Scenario Selector -->
+            <div id="scenario-selector" class="flex-1 p-6 md:p-12 overflow-y-auto no-scrollbar pb-20">
+                <div class="mb-8">
+                    <span class="text-muse-rose/80 text-[10px] tracking-[0.3em] uppercase mb-3 block">Interactive Roleplay</span>
+                    <h2 class="font-serif text-3xl md:text-4xl text-muse-gold">选择你的场景</h2>
+                </div>
+                
+                <!-- Scenes Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Cards: More abstract & suggestive images -->
+                    <div onclick="startStory('elevator')" class="group relative h-48 rounded-lg overflow-hidden cursor-pointer border border-white/5 hover:border-muse-rose/50 transition-all duration-500">
+                        <img src="https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?q=80&w=600&auto=format&fit=crop" class="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:scale-105 transition duration-700 grayscale group-hover:grayscale-0">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent"></div>
+                        <div class="absolute bottom-4 left-4">
+                            <h3 class="font-serif text-xl text-white mb-1 group-hover:text-muse-rose transition">私人电梯</h3>
+                            <p class="text-[10px] text-muse-dim uppercase tracking-widest">Confined · Breath</p>
+                        </div>
+                    </div>
+                    <div onclick="startStory('office')" class="group relative h-48 rounded-lg overflow-hidden cursor-pointer border border-white/5 hover:border-muse-rose/50 transition-all duration-500">
+                        <img src="https://images.unsplash.com/photo-1497215728101-856f4ea42174?q=80&w=600&auto=format&fit=crop" class="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:scale-105 transition duration-700 grayscale group-hover:grayscale-0">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent"></div>
+                        <div class="absolute bottom-4 left-4">
+                            <h3 class="font-serif text-xl text-white mb-1 group-hover:text-muse-rose transition">深夜办公室</h3>
+                            <p class="text-[10px] text-muse-dim uppercase tracking-widest">Power · Silence</p>
+                        </div>
+                    </div>
+                    <div onclick="startStory('bedroom')" class="group relative h-48 rounded-lg overflow-hidden cursor-pointer border border-white/5 hover:border-muse-rose/50 transition-all duration-500">
+                        <img src="https://images.unsplash.com/photo-1520697830682-8be603d3a6e9?q=80&w=600&auto=format&fit=crop" class="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:scale-105 transition duration-700 grayscale group-hover:grayscale-0">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent"></div>
+                        <div class="absolute bottom-4 left-4">
+                            <h3 class="font-serif text-xl text-white mb-1 group-hover:text-muse-rose transition">迷离卧室</h3>
+                            <p class="text-[10px] text-muse-dim uppercase tracking-widest">Intimate · Skin</p>
+                        </div>
+                    </div>
+                    <div onclick="startStory('car')" class="group relative h-48 rounded-lg overflow-hidden cursor-pointer border border-white/5 hover:border-muse-rose/50 transition-all duration-500">
+                        <img src="https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?q=80&w=600&auto=format&fit=crop" class="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:scale-105 transition duration-700 grayscale group-hover:grayscale-0">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent"></div>
+                        <div class="absolute bottom-4 left-4">
+                            <h3 class="font-serif text-xl text-white mb-1 group-hover:text-muse-rose transition">暴雨车内</h3>
+                            <p class="text-[10px] text-muse-dim uppercase tracking-widest">Sound · Heat</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Interface -->
+            <div id="chat-interface" class="hidden flex-col h-full relative bg-muse-black">
+                <!-- Toolbar: Persona Settings -->
+                <div class="p-3 border-b border-white/5 flex justify-between items-center bg-muse-panel/50 backdrop-blur-sm">
+                    <div class="flex items-center gap-3">
+                        <button onclick="exitStory()" class="text-muse-dim hover:text-white transition"><i class="fa-solid fa-chevron-left"></i></button>
+                        <div>
+                            <h3 class="font-serif text-base text-white" id="chat-title">Story Title</h3>
+                        </div>
+                    </div>
+                    <!-- New Persona Toolbar -->
+                    <div class="flex items-center gap-2">
+                        <button onclick="toggleSettings()" class="text-[10px] text-muse-gold/80 border border-white/10 hover:border-muse-rose rounded-full px-3 py-1 transition flex items-center gap-2">
+                            <i class="fa-solid fa-sliders"></i> <span id="current-persona-label">Default</span>
+                        </button>
+                        <button onclick="toggleVoiceOutput()" id="tts-toggle" class="text-[10px] text-muse-dim border border-white/10 hover:text-muse-rose rounded-full px-2 py-1 transition">
+                            <i class="fa-solid fa-volume-xmark"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Settings Popover (Hidden) -->
+                <div id="settings-popover" class="absolute top-14 right-4 z-50 bg-muse-panel border border-white/10 rounded-xl p-4 w-64 shadow-2xl hidden glass-panel animate-fade-in">
+                    <h4 class="text-xs text-muse-dim uppercase tracking-widest mb-3">Persona Settings</h4>
+                    
+                    <div class="space-y-4">
+                        <!-- Gender -->
+                        <div>
+                            <label class="text-[10px] text-stone-400 block mb-1">Target Gender</label>
+                            <select id="setting-gender" class="w-full bg-black/50 text-xs text-white border border-white/10 rounded p-2 focus:border-muse-rose outline-none" onchange="updateLiveSettings()">
+                                <option value="male">男性 (Masculine)</option>
+                                <option value="female">女性 (Feminine)</option>
+                                <option value="neutral">无性别 (Neutral)</option>
+                            </select>
+                        </div>
+                        <!-- Voice Tone -->
+                        <div>
+                            <label class="text-[10px] text-stone-400 block mb-1">Voice Tone</label>
+                            <select id="setting-voice" class="w-full bg-black/50 text-xs text-white border border-white/10 rounded p-2 focus:border-muse-rose outline-none" onchange="updateLiveSettings()">
+                                <option value="deep">低沉磁性 (Deep)</option>
+                                <option value="gentle">温柔治愈 (Gentle)</option>
+                                <option value="cool">清冷禁欲 (Cool)</option>
+                                <option value="dom">强势掌控 (Dominant)</option>
+                            </select>
+                        </div>
+                        <!-- Atmosphere -->
+                        <div>
+                            <label class="text-[10px] text-stone-400 block mb-1">Atmosphere</label>
+                            <select id="setting-vibe" class="w-full bg-black/50 text-xs text-white border border-white/10 rounded p-2 focus:border-muse-rose outline-none" onchange="updateLiveSettings()">
+                                <option value="tension">暧昧拉扯 (Tension)</option>
+                                <option value="romantic">浪漫唯美 (Romantic)</option>
+                                <option value="taboo">禁忌刺激 (Taboo)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="chat-history" class="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar"></div>
+                
+                <!-- Input Area with Voice -->
+                <div class="p-4 bg-muse-black border-t border-white/5">
+                    <div class="relative max-w-2xl mx-auto flex gap-2">
+                        <!-- Voice Input Button -->
+                        <button id="mic-btn" onmousedown="startListening()" onmouseup="stopListening()" ontouchstart="startListening()" ontouchend="stopListening()" class="bg-white/5 hover:bg-white/10 text-muse-dim hover:text-muse-rose rounded-full w-12 h-12 flex items-center justify-center transition border border-white/10">
+                            <i class="fa-solid fa-microphone"></i>
+                        </button>
+                        
+                        <div class="flex-1 relative">
+                            <input type="text" id="story-input" placeholder="输入或按住麦克风说话..." 
+                                   class="w-full h-12 bg-white/5 border border-white/10 rounded-full pl-6 pr-12 text-sm text-muse-gold focus:outline-none focus:border-muse-rose focus:bg-white/10 transition"
+                                   onkeypress="if(event.key==='Enter') continueStory()">
+                            <button onclick="continueStory()" class="absolute right-2 top-2 p-2 text-muse-dim hover:text-muse-rose transition bg-white/5 rounded-full hover:bg-white/10 w-8 h-8 flex items-center justify-center">
+                                <i class="fa-solid fa-paper-plane text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Oracle Modal -->
+    <div id="oracle-modal" class="fixed inset-0 z-[80] hidden bg-black/95 backdrop-blur-xl flex items-center justify-center p-6">
+        <!-- Content same as before but styled -->
+        <div class="max-w-md w-full text-center relative">
+            <button onclick="closeOracle()" class="absolute -top-12 right-0 text-stone-500 hover:text-white p-2">✕</button>
+            <h3 class="font-serif text-3xl text-muse-gold mb-2">The Oracle</h3>
+            <p class="text-xs text-muse-dim tracking-widest mb-8">Ask the universe...</p>
+            <!-- Card Container -->
+            <div id="oracle-card-container" class="relative w-64 h-96 mx-auto mb-8 cursor-pointer perspective-1000 hidden" onclick="flipCard()">
+                <div class="card-inner relative w-full h-full shadow-2xl transition-transform duration-700 transform-style-3d">
+                    <div class="card-front absolute inset-0 bg-muse-panel border border-muse-rose/30 rounded-xl flex flex-col items-center justify-center p-6 backface-hidden rotate-y-180" style="transform: rotateY(180deg);">
+                        <div class="text-6xl mb-4" id="oracle-icon">🔮</div>
+                        <h4 class="font-serif text-xl text-muse-rose mb-4" id="oracle-title">...</h4>
+                        <p class="text-sm text-muse-gold/80 italic leading-relaxed" id="oracle-desc">...</p>
+                    </div>
+                    <div class="card-back absolute inset-0 bg-gradient-to-br from-stone-900 to-black border border-white/10 rounded-xl flex items-center justify-center backface-hidden">
+                        <div class="text-muse-dim/20 text-6xl font-serif">M</div>
+                        <div class="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
+                    </div>
+                </div>
+            </div>
+            <div id="oracle-controls">
+                <button onclick="consultOracle()" id="oracle-btn" class="bg-white/10 hover:bg-muse-rose text-white px-8 py-3 rounded-full text-xs tracking-[0.2em] transition border border-white/10">抽一张牌</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- API Key Modal -->
+    <div id="apikey-modal" class="fixed inset-0 z-[70] hidden bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="glass-panel max-w-md w-full p-8 rounded-lg">
+            <h3 class="font-serif text-xl text-muse-gold mb-2">Settings</h3>
+            <!-- ... (Same as v11 logic) ... -->
+            <div class="flex gap-2 mb-4 bg-white/5 p-1 rounded">
+                <button onclick="switchProvider('gemini')" id="btn-gemini" class="flex-1 py-2 text-xs rounded transition text-white bg-muse-rose">GEMINI</button>
+                <button onclick="switchProvider('dashscope')" id="btn-dashscope" class="flex-1 py-2 text-xs rounded transition text-stone-400">ALIYUN</button>
+            </div>
+            <input type="password" id="apikey-input" placeholder="Paste API Key..." class="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-muse-gold mb-4 text-sm">
+            <button onclick="saveApiSettings()" class="w-full bg-white/10 hover:bg-muse-rose text-white py-2 rounded text-xs tracking-widest">SAVE</button>
+            <button onclick="document.getElementById('apikey-modal').classList.add('hidden')" class="w-full mt-2 text-stone-500 text-xs hover:text-white">CLOSE</button>
+        </div>
+    </div>
+
+    <script>
+        // ========== 1. Dynamic Slideshow (Faster & Sensual) ==========
+        const backgroundImages = [
+            "https://images.unsplash.com/photo-1596704017254-9b121068fb31?q=80&w=1920&auto=format&fit=crop", // Hazy Red
+            "https://images.unsplash.com/photo-1515934751635-c81c6bc9a2d8?q=80&w=1920&auto=format&fit=crop", // Skin Texture
+            "https://images.unsplash.com/photo-1507608616759-54f48f0af0ee?q=80&w=1920&auto=format&fit=crop", // Rain/Glass
+            "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=1920&auto=format&fit=crop"  // Shadow Silhouette
+        ];
+
+        let currentSlide = 0;
+        function initSlideshow() {
+            const container = document.getElementById('slideshow-container');
+            backgroundImages.forEach((src, index) => {
+                const img = document.createElement('img');
+                img.src = src;
+                img.className = `slide-image ${index === 0 ? 'active' : ''}`;
+                container.prepend(img);
+            });
+            // Faster interval: 3.5s
+            setInterval(() => {
+                const images = document.querySelectorAll('.slide-image');
+                images[currentSlide].classList.remove('active');
+                currentSlide = (currentSlide + 1) % backgroundImages.length;
+                images[currentSlide].classList.add('active');
+            }, 3500); 
+        }
+        document.addEventListener('DOMContentLoaded', initSlideshow);
+
+        // ========== 2. The Prism (Inclusive Quiz) ==========
+        const quizData = [
+            {
+                id: 'orientation',
+                question: "你被什么样的特质吸引？",
+                options: [
+                    { label: "阳刚气质 (Masculinity)", value: "masculine", desc: "渴望力量感与张力" },
+                    { label: "阴柔气质 (Femininity)", value: "feminine", desc: "沉溺于细腻与柔美" },
+                    { label: "掌控与主导 (Dominance)", value: "dom", desc: "享受权力的让渡" },
+                    { label: "灵魂共鸣 (Soul)", value: "fluid", desc: "超越性别的连接" }
+                ]
+            },
+            {
+                id: 'atmosphere',
+                question: "你偏爱怎样的氛围？",
+                options: [
+                    { label: "暧昧拉扯", value: "tension", desc: "若即若离，眼神交汇" },
+                    { label: "禁忌刺激", value: "taboo", desc: "背德感与危险的边缘" },
+                    { label: "温柔治愈", value: "gentle", desc: "缓慢的拥抱与低语" },
+                    { label: "绝对服从", value: "submission", desc: "完全的交付" }
+                ]
+            },
+            {
+                id: 'style',
+                question: "剧本风格偏好？",
+                options: [
+                    { label: "唯美含蓄", value: "poetic", desc: "注重五感描写，留有想象空间" },
+                    { label: "直白炽热", value: "intense", desc: "更直接的感官刺激" }
+                ]
+            }
+        ];
+        let currentStep = 0;
+        let userProfile = { orientation: 'masculine', atmosphere: 'tension', style: 'poetic' }; // Defaults
+
+        function enterPrism() {
+            document.getElementById('landing-page').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('landing-page').style.display = 'none';
+                document.getElementById('prism-modal').classList.remove('hidden');
+                renderQuestion();
+            }, 500);
+        }
+        
+        function renderQuestion() {
+            const q = quizData[currentStep];
+            const container = document.getElementById('question-container');
+            document.getElementById('prism-step-indicator').innerText = `STEP ${currentStep + 1} / ${quizData.length}`;
+            let html = `<h3 class="text-2xl font-serif text-white mb-8 animate-fade-in">${q.question}</h3><div class="grid grid-cols-1 gap-3 animate-fade-in">`;
+            q.options.forEach(opt => {
+                const isSelected = userProfile[q.id] === opt.value;
+                html += `<div onclick="selectOption('${q.id}', '${opt.value}')" class="cursor-pointer border border-white/10 rounded-lg p-4 transition-all hover:bg-white/5 hover:border-muse-rose/50 ${isSelected ? 'selected-option' : ''}"><div class="font-serif text-lg mb-1">${opt.label}</div><div class="text-xs text-muse-dim">${opt.desc}</div></div>`;
+            });
+            container.innerHTML = html + `</div>`;
+            document.getElementById('prev-btn').style.visibility = currentStep > 0 ? 'visible' : 'hidden';
+        }
+
+        function selectOption(key, value) {
+            userProfile[key] = value;
+            renderQuestion();
+            setTimeout(() => {
+                if(currentStep < quizData.length - 1) {
+                    currentStep++;
+                    renderQuestion();
+                } else {
+                    finishPrism();
+                }
+            }, 300);
+        }
+        
+        function prevQuestion() { if(currentStep>0) { currentStep--; renderQuestion(); } }
+        
+        function finishPrism() {
+            localStorage.setItem('muse_profile', JSON.stringify(userProfile));
+            document.getElementById('prism-modal').classList.add('hidden');
+            const main = document.getElementById('main-content');
+            main.classList.remove('hidden'); main.classList.add('flex');
+            setTimeout(() => main.classList.remove('opacity-0'), 100);
+            updateLiveSettings(); // Sync toolbar
+        }
+
+        function openPrism() {
+            document.getElementById('main-content').classList.add('hidden');
+            document.getElementById('prism-modal').classList.remove('hidden');
+            currentStep = 0;
+            renderQuestion();
+        }
+
+        // ========== 3. AI & Voice Logic ==========
+        let activeProvider = localStorage.getItem('muse_ai_provider') || 'gemini';
+        let voiceEnabled = false;
+        
+        // Voice Input (Web Speech API)
+        let recognition;
+        function initRecognition() {
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+                recognition.lang = 'zh-CN';
+                recognition.continuous = false;
+                recognition.interimResults = false;
+                
+                recognition.onstart = () => {
+                    document.getElementById('mic-btn').classList.add('recording-pulse', 'text-muse-rose', 'border-muse-rose');
+                };
+                recognition.onend = () => {
+                    document.getElementById('mic-btn').classList.remove('recording-pulse', 'text-muse-rose', 'border-muse-rose');
+                };
+                recognition.onresult = (event) => {
+                    const text = event.results[0][0].transcript;
+                    const input = document.getElementById('story-input');
+                    input.value = text;
+                    input.focus();
+                };
+            } else {
+                alert("当前浏览器不支持语音输入");
+            }
+        }
+        
+        function startListening() { if(recognition) recognition.start(); else initRecognition(); }
+        function stopListening() { if(recognition) recognition.stop(); }
+
+        // TTS Toggle
+        function toggleVoiceOutput() {
+            voiceEnabled = !voiceEnabled;
+            const btn = document.getElementById('tts-toggle');
+            if(voiceEnabled) {
+                btn.innerHTML = '<i class="fa-solid fa-volume-high"></i>';
+                btn.classList.add('text-muse-rose', 'border-muse-rose');
+            } else {
+                btn.innerHTML = '<i class="fa-solid fa-volume-xmark"></i>';
+                btn.classList.remove('text-muse-rose', 'border-muse-rose');
+                window.speechSynthesis.cancel();
+            }
+        }
+
+        function speak(text) {
+            if(!voiceEnabled) return;
+            window.speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(text);
+            u.lang = 'zh-CN';
+            // Simple voice matching based on profile
+            if(userProfile.orientation === 'masculine') u.pitch = 0.8;
+            else u.pitch = 1.2;
+            window.speechSynthesis.speak(u);
+        }
+
+        // API Calls
+        function getApiKey(p=activeProvider) { 
+            return p==='gemini' ? localStorage.getItem('muse_gemini_apikey') : localStorage.getItem('muse_dashscope_apikey'); 
+        }
+        
+        async function callAI(prompt, system, json=false) {
+            const key = getApiKey();
+            if(!key) { openApiKeySettings(); return "请先配置 API Key"; }
+            
+            // Unified Call Logic
+            try {
+                if(activeProvider === 'gemini') {
+                    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${key}`;
+                    const body = { contents: [{parts:[{text: prompt}]}], systemInstruction:{parts:[{text:system}]} };
+                    if(json) body.generationConfig = { responseMimeType: "application/json" };
+                    
+                    const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+                    const data = await res.json();
+                    return data.candidates?.[0]?.content?.parts?.[0]?.text || "Error";
+                } else {
+                    // DashScope / OpenAI Compatible
+                    const url = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
+                    const res = await fetch(url, {
+                        method:'POST',
+                        headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${key}` },
+                        body: JSON.stringify({ model:'qwen-plus', messages:[{role:'system',content:system},{role:'user',content:prompt}] })
+                    });
+                    const data = await res.json();
+                    return data.choices?.[0]?.message?.content || "Error";
+                }
+            } catch(e) { console.error(e); return "Network Error"; }
+        }
+
+        // ========== 4. Core Features ==========
+        
+        // Settings Toolbar Logic
+        function toggleSettings() {
+            const pop = document.getElementById('settings-popover');
+            pop.classList.toggle('hidden');
+        }
+        
+        function updateLiveSettings() {
+            // Update local profile from dropdowns
+            userProfile.orientation = document.getElementById('setting-gender').value;
+            userProfile.atmosphere = document.getElementById('setting-vibe').value;
+            // Also update voice logic if needed here
+            
+            // Update Label
+            document.getElementById('current-persona-label').innerText = `${userProfile.orientation} / ${userProfile.atmosphere}`;
+        }
+
+        // Feature: Scripter (Updated for Long Context)
+        async function generateScript() {
+            const input = document.getElementById('script-prompt');
+            const resDiv = document.getElementById('script-result');
+            const btn = document.getElementById('script-btn');
+            if(!input.value) return;
+            
+            btn.innerText = "WRITING..."; btn.disabled = true;
+            resDiv.classList.remove('hidden');
+            resDiv.innerHTML = '<span class="animate-pulse">Muse 正在编织...</span>';
+            
+            const system = `你是一个女性向情色文学专家。
+            请根据关键词写一段【200-300字】的独白或场景描写。
+            重点：极度细腻的五感描写（声音、气味、温度、触觉），氛围要${userProfile.atmosphere}，对象是${userProfile.orientation}。
+            拒绝陈词滥调，使用高级、富有张力的语言。`;
+            
+            const text = await callAI(input.value, system);
+            resDiv.innerHTML = marked.parse(text);
+            btn.innerText = "GENERATE"; btn.disabled = false;
+        }
+
+        // Feature: Interactive Story
+        let storyContext = "";
+        function startStory(scene) {
+            document.getElementById('scenario-selector').classList.add('hidden');
+            document.getElementById('chat-interface').classList.remove('hidden');
+            document.getElementById('chat-interface').classList.add('flex');
+            
+            // Set initial context based on scene + profile
+            const target = userProfile.orientation === 'female' ? '她' : (userProfile.orientation === 'masculine' ? '他' : 'Ta');
+            let intro = "";
+            
+            if(scene === 'elevator') intro = `电梯故障停在22层。${target}解开了领口，狭小的空间里充满了${userProfile.atmosphere === 'taboo' ? '危险' : '暧昧'}的气息...`;
+            else if(scene === 'office') intro = `深夜的办公室，只有你和${target}。${target}反锁了门，走向你...`;
+            else if(scene === 'bedroom') intro = `卧室内光线昏暗，${target}的气息就在耳边...`;
+            else intro = `暴雨拍打着车窗，车内雾气弥漫，${target}的手搭在方向盘上，侧头看你...`;
+            
+            storyContext = `场景：${scene}。对象：${target}。氛围：${userProfile.atmosphere}。`;
+            addBubble(intro, 'ai');
+            initRecognition(); // Prepare mic
+        }
+
+        function exitStory() {
+            document.getElementById('chat-interface').classList.remove('flex');
+            document.getElementById('chat-interface').classList.add('hidden');
+            document.getElementById('scenario-selector').classList.remove('hidden');
+            document.getElementById('chat-history').innerHTML = '';
+        }
+
+        async function continueStory() {
+            const input = document.getElementById('story-input');
+            const val = input.value.trim();
+            if(!val) return;
+            
+            addBubble(val, 'user');
+            input.value = '';
+            
+            const loadingId = addBubble('...', 'ai', true);
+            const system = `Roleplay Game. 你的对象设定：${userProfile.orientation}，声线：${document.getElementById('setting-voice').value}。
+            氛围：${userProfile.atmosphere}。请以第二人称“你”续写。
+            要求：注重感官描写、拉扯感、性张力。回复不要太短，100字左右。`;
+            const prompt = `Story Context: ${storyContext}\nUser Action: ${val}`;
+            
+            const res = await callAI(prompt, system);
+            document.getElementById(loadingId).remove();
+            addBubble(res, 'ai');
+            storyContext += `\nUser: ${val}\nAI: ${res}`;
+            
+            // Auto Speak if enabled
+            if(voiceEnabled) speak(res.replace(/[*#]/g, ''));
+        }
+
+        function addBubble(text, role, loading=false) {
+            const div = document.createElement('div');
+            div.className = `flex w-full ${role==='user'?'justify-end':'justify-start'}`;
+            div.id = 'msg-' + Date.now();
+            
+            const bubble = document.createElement('div');
+            bubble.className = `max-w-[85%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
+                role==='user' 
+                ? 'bg-muse-rose/20 text-white border border-muse-rose/30 rounded-tr-none' 
+                : 'bg-white/10 text-muse-gold border border-white/5 rounded-tl-none font-serif'
+            }`;
+            
+            if(loading) bubble.classList.add('animate-pulse');
+            bubble.innerHTML = loading ? text : marked.parse(text);
+            
+            div.appendChild(bubble);
+            document.getElementById('chat-history').appendChild(div);
+            
+            const history = document.getElementById('chat-history');
+            history.scrollTop = history.scrollHeight;
+            return div.id;
+        }
+
+        // Init Logic
+        function openApiKeySettings() { document.getElementById('apikey-modal').classList.remove('hidden'); }
+        function saveApiSettings() {
+            const k1 = document.getElementById('apikey-input').value;
+            if(k1) localStorage.setItem('muse_gemini_apikey', k1); 
+            // Simple logic for MVP
+            document.getElementById('apikey-modal').classList.add('hidden');
+        }
+        function switchProvider(p) {
+            activeProvider = p;
+            localStorage.setItem('muse_ai_provider', p);
+            document.getElementById('btn-gemini').className = p==='gemini'?'flex-1 py-2 text-xs rounded transition text-white bg-muse-rose':'flex-1 py-2 text-xs rounded transition text-stone-400';
+            document.getElementById('btn-dashscope').className = p==='dashscope'?'flex-1 py-2 text-xs rounded transition text-white bg-muse-rose':'flex-1 py-2 text-xs rounded transition text-stone-400';
+        }
+        
+        // Oracle Stubs
+        function openOracle() { document.getElementById('oracle-modal').classList.remove('hidden'); }
+        function closeOracle() { document.getElementById('oracle-modal').classList.add('hidden'); }
+        async function consultOracle() {
+            const btn = document.getElementById('oracle-btn');
+            btn.innerText = "...";
+            const sys = "Oracle mode. Output JSON: {title:'Card', icon:'🔮', desc:'Short poetic meaning'}";
+            const res = await callAI("Draw a card", sys, true);
+            try {
+                const j = JSON.parse(res.replace(/```json|```/g,''));
+                document.getElementById('oracle-title').innerText = j.title;
+                document.getElementById('oracle-icon').innerText = j.icon;
+                document.getElementById('oracle-desc').innerText = j.desc;
+                document.querySelector('.card-inner').style.transform = 'rotateY(180deg)';
+            } catch(e){}
+            btn.innerText = "抽一张牌";
+        }
+
+        // Init
+        window.onload = () => {
+            initSlideshow();
+            initRecognition();
+            const saved = localStorage.getItem('muse_profile');
+            if(saved) {
+                userProfile = JSON.parse(saved);
+                // Pre-fill dropdowns
+                document.getElementById('setting-gender').value = userProfile.orientation || 'masculine';
+                document.getElementById('setting-vibe').value = userProfile.atmosphere || 'tension';
+                updateLiveSettings();
+            }
+        };
+    </script>
+</body>
+</html>

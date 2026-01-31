@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TTS Integration Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #333;
+            border-radius: 8px;
+            background-color: #2a2a2a;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .test-pass {
+            background-color: #1a4a1a;
+            border: 1px solid #2a6a2a;
+            color: #4ade80;
+        }
+        .test-fail {
+            background-color: #4a1a1a;
+            border: 1px solid #6a2a2a;
+            color: #f87171;
+        }
+        .test-info {
+            background-color: #1e293b;
+            border: 1px solid #334155;
+            color: #94a3b8;
+        }
+        button {
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #2563eb;
+        }
+        button:disabled {
+            background-color: #6b7280;
+            cursor: not-allowed;
+        }
+        .voice-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .voice-card {
+            background-color: #374151;
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .voice-card:hover {
+            border-color: #3b82f6;
+        }
+        .voice-card.selected {
+            border-color: #10b981;
+            background-color: #065f46;
+        }
+        .status-display {
+            background-color: #1e293b;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-family: monospace;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>TTS 系统集成测试</h1>
+    
+    <div class="test-section">
+        <h2>系统初始化</h2>
+        <button onclick="initializeSystem()">初始化 TTS 系统</button>
+        <div id="init-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>WebSpeechEngine 集成测试</h2>
+        <button onclick="testWebSpeechIntegration()">测试 WebSpeech 引擎集成</button>
+        <div id="webspeech-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>音色测试</h2>
+        <div class="voice-grid">
+            <div class="voice-card" onclick="testVoiceIntegration('yushao')">
+                <h3>🍷 低沉御少音</h3>
+                <p>磁性 · 成熟</p>
+                <button onclick="event.stopPropagation(); playVoiceSample('yushao')">播放样本</button>
+            </div>
+            <div class="voice-card" onclick="testVoiceIntegration('shaonian')">
+                <h3>❄️ 清冷少年音</h3>
+                <p>清脆 · 禁欲</p>
+                <button onclick="event.stopPropagation(); playVoiceSample('shaonian')">播放样本</button>
+            </div>
+            <div class="voice-card" onclick="testVoiceIntegration('dashu')">
+                <h3>🥃 温柔大叔音</h3>
+                <p>低沉 · 包容</p>
+                <button onclick="event.stopPropagation(); playVoiceSample('dashu')">播放样本</button>
+            </div>
+        </div>
+        <div id="voice-test-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>系统状态</h2>
+        <button onclick="updateSystemStatus()">刷新状态</button>
+        <button onclick="stopAllPlayback()">停止播放</button>
+        <div id="system-status" class="status-display">点击"刷新状态"查看系统信息</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>功能测试</h2>
+        <button onclick="testUnifiedInterface()">测试统一接口</button>
+        <button onclick="testConfigurationPersistence()">测试配置持久化</button>
+        <button onclick="testErrorHandling()">测试错误处理</button>
+        <div id="function-test-results"></div>
+    </div>
+
+    <!-- Include all TTS components -->
+    <script src="js/tts/TTSConfig.js"></script>
+    <script src="js/tts/WebSpeechEngine.js"></script>
+    <script src="js/tts/DashScopeEngine.js"></script>
+    <script src="js/tts/StreamingProcessor.js"></script>
+    <script src="js/tts/ErrorHandler.js"></script>
+    <script src="js/tts/TTSService.js"></script>
+    <script src="js/tts/index.js"></script>
+    
+    <script>
+        let ttsService = null;
+        let testResults = [];
+        
+        // Initialize the TTS system
+        async function initializeSystem() {
+            const resultsDiv = document.getElementById('init-results');
+            resultsDiv.innerHTML = '<p>正在初始化系统...</p>';
+            
+            try {
+                ttsService = await window.TTSService.getTTSService();
+                
+                const status = await ttsService.getStatus();
+                const engines = await ttsService.getAvailableEngines();
+                
+                let html = '<div class="test-result test-pass">✅ TTS 系统初始化成功</div>';
+                html += `<div class="test-result test-info">当前引擎: ${status.currentEngine}</div>`;
+                html += `<div class="test-result test-info">可用引擎: ${engines.map(e => e.name).join(', ')}</div>`;
+                
+                resultsDiv.innerHTML = html;
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="test-result test-fail">❌ 系统初始化失败: ${error.message}</div>`;
+            }
+        }
+        
+        // Test WebSpeech engine integration
+        async function testWebSpeechIntegration() {
+            const resultsDiv = document.getElementById('webspeech-results');
+            resultsDiv.innerHTML = '<p>测试 WebSpeech 引擎集成...</p>';
+            
+            const results = [];
+            
+            try {
+                if (!ttsService) {
+                    await initializeSystem();
+                }
+                
+                // Test 1: Switch to WebSpeech engine
+                await ttsService.switchEngine('web-speech');
+                const currentEngine = ttsService.getCurrentEngine();
+                
+                if (currentEngine.id === 'web-speech') {
+                    results.push({ name: '引擎切换', passed: true });
+                } else {
+                    results.push({ name: '引擎切换', passed: false, error: '未能切换到 WebSpeech 引擎' });
+                }
+                
+                // Test 2: Get available voices
+                const voices = await ttsService.getAvailableVoices();
+                if (voices.length === 3 && voices.every(v => v.engine === 'web-speech')) {
+                    results.push({ name: '获取音色列表', passed: true });
+                } else {
+                    results.push({ name: '获取音色列表', passed: false, error: '音色列表不正确' });
+                }
+                
+                // Test 3: Test synthesis
+                await ttsService.synthesize('测试文本', { voice: 'yushao' });
+                results.push({ name: '语音合成', passed: true });
+                
+                // Test 4: Test configuration
+                await ttsService.updateConfiguration('voice', 'shaonian');
+                const config = await ttsService.getConfiguration();
+                
+                if (config.voice === 'shaonian') {
+                    results.push({ name: '配置更新', passed: true });
+                } else {
+                    results.push({ name: '配置更新', passed: false, error: '配置未正确保存' });
+                }
+                
+            } catch (error) {
+                results.push({ name: '集成测试', passed: false, error: error.message });
+            }
+            
+            // Display results
+            let html = '';
+            results.forEach(result => {
+                const className = result.passed ? 'test-pass' : 'test-fail';
+                const status = result.passed ? '✅ 通过' : '❌ 失败';
+                const errorMsg = result.error ? ` - ${result.error}` : '';
+                html += `<div class="test-result ${className}">${result.name}: ${status}${errorMsg}</div>`;
+            });
+            
+            resultsDiv.innerHTML = html;
+        }
+        
+        // Test voice integration
+        async function testVoiceIntegration(voiceType) {
+            const resultsDiv = document.getElementById('voice-test-results');
+            
+            try {
+                if (!ttsService) {
+                    await initializeSystem();
+                }
+                
+                // Update voice selection
+                await ttsService.updateConfiguration('voice', voiceType);
+                
+                // Update UI
+                document.querySelectorAll('.voice-card').forEach(card => {
+                    card.classList.remove('selected');
+                });
+                event.target.closest('.voice-card').classList.add('selected');
+                
+                resultsDiv.innerHTML = `<div class="test-result test-pass">✅ 已选择 ${voiceType} 音色</div>`;
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="test-result test-fail">❌ 音色选择失败: ${error.message}</div>`;
+            }
+        }
+        
+        // Play voice sample
+        async function playVoiceSample(voiceType) {
+            try {
+                if (!ttsService) {
+                    await initializeSystem();
+                }
+                
+                await window.TTSService.playSample(voiceType);
+                
+            } catch (error) {
+                console.error('播放样本失败:', error);
+            }
+        }
+        
+        // Update system status
+        async function updateSystemStatus() {
+            const statusDiv = document.getElementById('system-status');
+            
+            try {
+                if (!ttsService) {
+                    statusDiv.innerHTML = '系统未初始化';
+                    return;
+                }
+                
+                const status = await ttsService.getStatus();
+                const config = await ttsService.getConfiguration();
+                const engines = await ttsService.getAvailableEngines();
+                
+                let html = '<h3>系统状态:</h3>';
+                html += `<strong>初始化状态:</strong> ${status.isInitialized ? '已初始化' : '未初始化'}<br>`;
+                html += `<strong>当前引擎:</strong> ${status.currentEngine}<br>`;
+                html += `<strong>引擎状态:</strong> ${JSON.stringify(status.engineStatus, null, 2)}<br><br>`;
+                
+                html += '<h3>配置信息:</h3>';
+                html += `<strong>选择的音色:</strong> ${config.voice}<br>`;
+                html += `<strong>音量:</strong> ${config.volume}<br>`;
+                html += `<strong>语速:</strong> ${config.speed}<br>`;
+                html += `<strong>流式播放:</strong> ${config.streamingEnabled ? '启用' : '禁用'}<br><br>`;
+                
+                html += '<h3>可用引擎:</h3>';
+                engines.forEach(engine => {
+                    html += `<strong>${engine.name}:</strong> ${engine.available ? '可用' : '不可用'}<br>`;
+                });
+                
+                statusDiv.innerHTML = html;
+                
+            } catch (error) {
+                statusDiv.innerHTML = `错误: ${error.message}`;
+            }
+        }
+        
+        // Stop all playback
+        async function stopAllPlayback() {
+            try {
+                await window.TTSService.stopTTS();
+                document.getElementById('system-status').innerHTML += '<br><strong>已停止所有播放</strong>';
+            } catch (error) {
+                console.error('停止播放失败:', error);
+            }
+        }
+        
+        // Test unified interface
+        async function testUnifiedInterface() {
+            const resultsDiv = document.getElementById('function-test-results');
+            resultsDiv.innerHTML = '<p>测试统一接口...</p>';
+            
+            const results = [];
+            
+            try {
+                if (!ttsService) {
+                    await initializeSystem();
+                }
+                
+                // Test speakText function
+                await window.TTSService.speakText('统一接口测试', { voice: 'yushao' });
+                results.push({ name: 'speakText 函数', passed: true });
+                
+                // Test playSample function
+                await window.TTSService.playSample('shaonian');
+                results.push({ name: 'playSample 函数', passed: true });
+                
+                // Test configuration functions
+                const originalVoice = (await window.TTSService.getTTSConfiguration()).voice;
+                await window.TTSService.updateTTSConfiguration('voice', 'dashu');
+                const newVoice = (await window.TTSService.getTTSConfiguration()).voice;
+                
+                if (newVoice === 'dashu') {
+                    results.push({ name: '配置管理', passed: true });
+                    // Restore original voice
+                    await window.TTSService.updateTTSConfiguration('voice', originalVoice);
+                } else {
+                    results.push({ name: '配置管理', passed: false, error: '配置未正确更新' });
+                }
+                
+            } catch (error) {
+                results.push({ name: '统一接口测试', passed: false, error: error.message });
+            }
+            
+            // Display results
+            let html = '';
+            results.forEach(result => {
+                const className = result.passed ? 'test-pass' : 'test-fail';
+                const status = result.passed ? '✅ 通过' : '❌ 失败';
+                const errorMsg = result.error ? ` - ${result.error}` : '';
+                html += `<div class="test-result ${className}">${result.name}: ${status}${errorMsg}</div>`;
+            });
+            
+            resultsDiv.innerHTML = html;
+        }
+        
+        // Test configuration persistence
+        async function testConfigurationPersistence() {
+            const resultsDiv = document.getElementById('function-test-results');
+            resultsDiv.innerHTML += '<p>测试配置持久化...</p>';
+            
+            try {
+                if (!ttsService) {
+                    await initializeSystem();
+                }
+                
+                // Save a test configuration
+                await window.TTSService.updateTTSConfiguration('voice', 'dashu');
+                await window.TTSService.updateTTSConfiguration('volume', 75);
+                
+                // Create a new service instance to test persistence
+                await window.TTSService.resetTTSService();
+                const newService = await window.TTSService.getTTSService();
+                const config = await newService.getConfiguration();
+                
+                if (config.voice === 'dashu' && config.volume === 75) {
+                    resultsDiv.innerHTML += '<div class="test-result test-pass">✅ 配置持久化测试通过</div>';
+                } else {
+                    resultsDiv.innerHTML += '<div class="test-result test-fail">❌ 配置持久化测试失败</div>';
+                }
+                
+                ttsService = newService; // Update reference
+                
+            } catch (error) {
+                resultsDiv.innerHTML += `<div class="test-result test-fail">❌ 配置持久化测试失败: ${error.message}</div>`;
+            }
+        }
+        
+        // Test error handling
+        async function testErrorHandling() {
+            const resultsDiv = document.getElementById('function-test-results');
+            resultsDiv.innerHTML += '<p>测试错误处理...</p>';
+            
+            try {
+                if (!ttsService) {
+                    await initializeSystem();
+                }
+                
+                // Test invalid voice
+                try {
+                    await ttsService.synthesize('测试', { voice: 'invalid_voice' });
+                    resultsDiv.innerHTML += '<div class="test-result test-fail">❌ 错误处理测试失败 - 应该抛出错误</div>';
+                } catch (error) {
+                    resultsDiv.innerHTML += '<div class="test-result test-pass">✅ 无效音色错误处理正确</div>';
+                }
+                
+                // Test invalid options
+                const engine = ttsService.engines.get('web-speech');
+                const validation = engine.validateOptions({ speed: 999 });
+                
+                if (!validation.isValid) {
+                    resultsDiv.innerHTML += '<div class="test-result test-pass">✅ 选项验证错误处理正确</div>';
+                } else {
+                    resultsDiv.innerHTML += '<div class="test-result test-fail">❌ 选项验证应该失败</div>';
+                }
+                
+            } catch (error) {
+                resultsDiv.innerHTML += `<div class="test-result test-fail">❌ 错误处理测试失败: ${error.message}</div>`;
+            }
+        }
+        
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            console.log('TTS Integration Test page loaded');
+        });
+    </script>
+</body>
+</html>

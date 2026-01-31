@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSpeechEngine Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #333;
+            border-radius: 8px;
+            background-color: #2a2a2a;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .test-pass {
+            background-color: #1a4a1a;
+            border: 1px solid #2a6a2a;
+            color: #4ade80;
+        }
+        .test-fail {
+            background-color: #4a1a1a;
+            border: 1px solid #6a2a2a;
+            color: #f87171;
+        }
+        button {
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #2563eb;
+        }
+        .voice-info {
+            background-color: #1e293b;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>WebSpeechEngine 测试</h1>
+    
+    <div class="test-section">
+        <h2>基础功能测试</h2>
+        <button onclick="runBasicTests()">运行基础测试</button>
+        <div id="basic-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>音色测试</h2>
+        <button onclick="testVoice('yushao')">测试御少音</button>
+        <button onclick="testVoice('shaonian')">测试少年音</button>
+        <button onclick="testVoice('dashu')">测试大叔音</button>
+        <div id="voice-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>可用音色列表</h2>
+        <button onclick="showAvailableVoices()">显示可用音色</button>
+        <div id="voices-list"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>引擎能力测试</h2>
+        <button onclick="testCapabilities()">测试引擎能力</button>
+        <div id="capabilities-results"></div>
+    </div>
+
+    <!-- Include the WebSpeechEngine class -->
+    <script src="js/tts/WebSpeechEngine.js"></script>
+    
+    <script>
+        let engine;
+        
+        // Initialize engine
+        async function initEngine() {
+            if (!engine) {
+                engine = new WebSpeechEngine();
+                await engine.initialize();
+            }
+            return engine;
+        }
+        
+        // Run basic functionality tests
+        async function runBasicTests() {
+            const resultsDiv = document.getElementById('basic-results');
+            resultsDiv.innerHTML = '<p>运行测试中...</p>';
+            
+            const results = [];
+            
+            try {
+                await initEngine();
+                
+                // Test 1: Engine initialization
+                if (engine.name === 'web-speech' && engine.displayName === 'Web Speech API') {
+                    results.push({ name: '引擎初始化', passed: true });
+                } else {
+                    results.push({ name: '引擎初始化', passed: false, error: '引擎名称或显示名称不正确' });
+                }
+                
+                // Test 2: Voice map presence
+                if (engine.voiceMap.yushao && engine.voiceMap.shaonian && engine.voiceMap.dashu) {
+                    results.push({ name: '音色配置', passed: true });
+                } else {
+                    results.push({ name: '音色配置', passed: false, error: '缺少必要的音色配置' });
+                }
+                
+                // Test 3: isAvailable method
+                if (engine.isAvailable()) {
+                    results.push({ name: '可用性检查', passed: true });
+                } else {
+                    results.push({ name: '可用性检查', passed: false, error: 'Web Speech API 不可用' });
+                }
+                
+                // Test 4: getAvailableVoices method
+                const voices = engine.getAvailableVoices();
+                if (Array.isArray(voices) && voices.length === 3) {
+                    results.push({ name: '获取可用音色', passed: true });
+                } else {
+                    results.push({ name: '获取可用音色', passed: false, error: '音色数量不正确' });
+                }
+                
+                // Test 5: validateOptions method
+                const validResult = engine.validateOptions({ voice: 'yushao', speed: 1.0, volume: 50 });
+                const invalidResult = engine.validateOptions({ voice: 'invalid' });
+                
+                if (validResult.isValid && !invalidResult.isValid) {
+                    results.push({ name: '选项验证', passed: true });
+                } else {
+                    results.push({ name: '选项验证', passed: false, error: '选项验证逻辑不正确' });
+                }
+                
+            } catch (error) {
+                results.push({ name: '测试执行', passed: false, error: error.message });
+            }
+            
+            // Display results
+            let html = '';
+            results.forEach(result => {
+                const className = result.passed ? 'test-pass' : 'test-fail';
+                const status = result.passed ? '✅ 通过' : '❌ 失败';
+                const errorMsg = result.error ? ` - ${result.error}` : '';
+                html += `<div class="test-result ${className}">${result.name}: ${status}${errorMsg}</div>`;
+            });
+            
+            resultsDiv.innerHTML = html;
+        }
+        
+        // Test specific voice
+        async function testVoice(voiceId) {
+            const resultsDiv = document.getElementById('voice-results');
+            
+            try {
+                await initEngine();
+                
+                const testText = `这是${voiceId}音色的测试`;
+                resultsDiv.innerHTML = `<p>正在播放 ${voiceId} 音色...</p>`;
+                
+                await engine.synthesize(testText, { voice: voiceId });
+                
+                resultsDiv.innerHTML += `<div class="test-result test-pass">✅ ${voiceId} 音色播放成功</div>`;
+                
+            } catch (error) {
+                resultsDiv.innerHTML += `<div class="test-result test-fail">❌ ${voiceId} 音色播放失败: ${error.message}</div>`;
+            }
+        }
+        
+        // Show available voices
+        async function showAvailableVoices() {
+            const listDiv = document.getElementById('voices-list');
+            
+            try {
+                await initEngine();
+                
+                const voices = engine.getAvailableVoices();
+                
+                let html = '<h3>可用音色:</h3>';
+                voices.forEach(voice => {
+                    html += `
+                        <div class="voice-info">
+                            <strong>ID:</strong> ${voice.id}<br>
+                            <strong>名称:</strong> ${voice.name}<br>
+                            <strong>描述:</strong> ${voice.description}<br>
+                            <strong>引擎:</strong> ${voice.engine}
+                        </div>
+                    `;
+                });
+                
+                listDiv.innerHTML = html;
+                
+            } catch (error) {
+                listDiv.innerHTML = `<div class="test-result test-fail">❌ 获取音色列表失败: ${error.message}</div>`;
+            }
+        }
+        
+        // Test engine capabilities
+        async function testCapabilities() {
+            const resultsDiv = document.getElementById('capabilities-results');
+            
+            try {
+                await initEngine();
+                
+                const capabilities = engine.getCapabilities();
+                const status = engine.getStatus();
+                
+                let html = '<h3>引擎能力:</h3>';
+                html += `<div class="voice-info">
+                    <strong>流式支持:</strong> ${capabilities.streaming ? '是' : '否'}<br>
+                    <strong>支持语言:</strong> ${capabilities.languages.join(', ')}<br>
+                    <strong>支持格式:</strong> ${capabilities.formats.join(', ')}<br>
+                    <strong>最大文本长度:</strong> ${capabilities.maxTextLength}<br>
+                    <strong>SSML支持:</strong> ${capabilities.supportsSSML ? '是' : '否'}
+                </div>`;
+                
+                html += '<h3>当前状态:</h3>';
+                html += `<div class="voice-info">
+                    <strong>正在播放:</strong> ${status.isPlaying ? '是' : '否'}<br>
+                    <strong>已暂停:</strong> ${status.isPaused ? '是' : '否'}<br>
+                    <strong>有当前语音:</strong> ${status.currentUtterance ? '是' : '否'}
+                </div>`;
+                
+                resultsDiv.innerHTML = html;
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="test-result test-fail">❌ 获取引擎能力失败: ${error.message}</div>`;
+            }
+        }
+        
+        // Initialize on page load
+        window.addEventListener('load', async () => {
+            try {
+                await initEngine();
+                console.log('WebSpeechEngine initialized successfully');
+            } catch (error) {
+                console.error('Failed to initialize WebSpeechEngine:', error);
+            }
+        });
+    </script>
+</body>
+</html>

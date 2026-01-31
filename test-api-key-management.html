@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Key Management Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #333;
+            border-radius: 8px;
+            background-color: #2a2a2a;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #1a4a1a;
+            border: 1px solid #2a6a2a;
+            color: #4ade80;
+        }
+        .error {
+            background-color: #4a1a1a;
+            border: 1px solid #6a2a2a;
+            color: #f87171;
+        }
+        .info {
+            background-color: #1a3a4a;
+            border: 1px solid #2a4a6a;
+            color: #60a5fa;
+        }
+        input, button {
+            padding: 8px 12px;
+            margin: 5px;
+            border: 1px solid #555;
+            border-radius: 4px;
+            background-color: #333;
+            color: #fff;
+        }
+        button {
+            cursor: pointer;
+            background-color: #4a5568;
+        }
+        button:hover {
+            background-color: #5a6578;
+        }
+        #testResults {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>API Key Management Test</h1>
+    <p>This page tests the API key management and validation functionality for DashScope TTS integration.</p>
+
+    <div class="test-section">
+        <h3>Manual API Key Testing</h3>
+        <div>
+            <input type="text" id="apiKeyInput" placeholder="Enter DashScope API key" style="width: 300px;">
+            <button onclick="testApiKey()">Test API Key</button>
+            <button onclick="clearApiKey()">Clear API Key</button>
+        </div>
+        <div id="manualTestResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>Automated Tests</h3>
+        <button onclick="runAllTests()">Run All Tests</button>
+        <div id="testResults"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>API Key Status</h3>
+        <button onclick="showApiKeyStatus()">Show API Key Status</button>
+        <div id="apiKeyStatusDisplay"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>Current Configuration</h3>
+        <button onclick="showConfiguration()">Show Current Config</button>
+        <div id="configDisplay"></div>
+    </div>
+
+    <!-- Include TTS modules -->
+    <script src="js/tts/TTSConfig.js"></script>
+    <script src="js/tts/DashScopeEngine.js"></script>
+    <script src="js/tts/WebSpeechEngine.js"></script>
+    <script src="js/tts/TTSService.js"></script>
+
+    <script>
+        let ttsService;
+        let testResults = [];
+
+        // Initialize TTS Service
+        async function initTTSService() {
+            if (!ttsService) {
+                ttsService = new TTSService();
+                await ttsService.init();
+            }
+            return ttsService;
+        }
+
+        // Manual API key testing
+        async function testApiKey() {
+            const apiKey = document.getElementById('apiKeyInput').value.trim();
+            const resultDiv = document.getElementById('manualTestResult');
+            
+            if (!apiKey) {
+                resultDiv.innerHTML = '<div class="test-result error">Please enter an API key</div>';
+                return;
+            }
+
+            try {
+                const service = await initTTSService();
+                resultDiv.innerHTML = '<div class="test-result info">Testing API key...</div>';
+                
+                const result = await service.configureDashScopeApiKey(apiKey);
+                
+                if (result.success) {
+                    resultDiv.innerHTML = '<div class="test-result success">✅ API key is valid and has been saved</div>';
+                } else {
+                    resultDiv.innerHTML = `<div class="test-result error">❌ ${result.error || 'API key is invalid'}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="test-result error">❌ Error: ${error.message}</div>`;
+            }
+        }
+
+        // Clear API key
+        async function clearApiKey() {
+            try {
+                const service = await initTTSService();
+                service.config.save('dashscopeApiKey', null);
+                
+                const dashscopeEngine = service.engines.get('dashscope');
+                if (dashscopeEngine) {
+                    dashscopeEngine.setApiKey(null);
+                }
+                
+                document.getElementById('manualTestResult').innerHTML = 
+                    '<div class="test-result info">API key cleared</div>';
+                document.getElementById('apiKeyInput').value = '';
+            } catch (error) {
+                document.getElementById('manualTestResult').innerHTML = 
+                    `<div class="test-result error">Error clearing API key: ${error.message}</div>`;
+            }
+        }
+
+        // Show API key status
+        async function showApiKeyStatus() {
+            try {
+                const service = await initTTSService();
+                const status = await service.getApiKeyStatus();
+                
+                const statusHtml = `
+                    <div class="test-result info">
+                        <h4>API Key Status:</h4>
+                        <pre>${JSON.stringify(status, null, 2)}</pre>
+                    </div>
+                `;
+                
+                document.getElementById('apiKeyStatusDisplay').innerHTML = statusHtml;
+            } catch (error) {
+                document.getElementById('apiKeyStatusDisplay').innerHTML = 
+                    `<div class="test-result error">Error getting API key status: ${error.message}</div>`;
+            }
+        }
+
+        // Show current configuration
+        async function showConfiguration() {
+            try {
+                const service = await initTTSService();
+                const config = service.getConfiguration();
+                const status = service.getStatus();
+                
+                const configHtml = `
+                    <div class="test-result info">
+                        <h4>Configuration:</h4>
+                        <pre>${JSON.stringify(config, null, 2)}</pre>
+                        <h4>Service Status:</h4>
+                        <pre>${JSON.stringify(status, null, 2)}</pre>
+                    </div>
+                `;
+                
+                document.getElementById('configDisplay').innerHTML = configHtml;
+            } catch (error) {
+                document.getElementById('configDisplay').innerHTML = 
+                    `<div class="test-result error">Error getting configuration: ${error.message}</div>`;
+            }
+        }
+
+        // Test helper function
+        function addTestResult(name, success, message) {
+            testResults.push({
+                name: name,
+                success: success,
+                message: message
+            });
+        }
+
+        // Run automated tests
+        async function runAllTests() {
+            testResults = [];
+            const resultsDiv = document.getElementById('testResults');
+            resultsDiv.innerHTML = '<div class="test-result info">Running tests...</div>';
+
+            try {
+                const service = await initTTSService();
+                const dashscopeEngine = service.engines.get('dashscope');
+
+                // Test 1: Initial state - no API key
+                try {
+                    const initiallyAvailable = dashscopeEngine.isAvailable();
+                    addTestResult(
+                        'Initial state - no API key',
+                        !initiallyAvailable,
+                        initiallyAvailable ? 'Should not be available without API key' : 'Correctly not available without API key'
+                    );
+                } catch (error) {
+                    addTestResult('Initial state - no API key', false, error.message);
+                }
+
+                // Test 2: Set invalid API key
+                try {
+                    dashscopeEngine.setApiKey('invalid');
+                    const validation = await dashscopeEngine.validateApiKey();
+                    addTestResult(
+                        'Invalid API key validation',
+                        !validation.isValid,
+                        validation.isValid ? 'Should reject invalid API key' : `Correctly rejected invalid API key: ${validation.error}`
+                    );
+                } catch (error) {
+                    addTestResult('Invalid API key validation', false, error.message);
+                }
+
+                // Test 3: API key storage and retrieval
+                try {
+                    const testKey = 'test-key-12345';
+                    dashscopeEngine.setApiKey(testKey);
+                    
+                    const storedKey = dashscopeEngine.apiKey;
+                    addTestResult(
+                        'API key storage',
+                        storedKey === testKey,
+                        storedKey === testKey ? 'API key stored correctly' : `Expected ${testKey}, got ${storedKey}`
+                    );
+                } catch (error) {
+                    addTestResult('API key storage', false, error.message);
+                }
+
+                // Test 4: Configuration persistence
+                try {
+                    const testKey = 'persistent-test-key';
+                    const result = await service.configureDashScopeApiKey(testKey);
+                    
+                    const savedKey = service.config.get('dashscopeApiKey');
+                    addTestResult(
+                        'Configuration persistence',
+                        (result.success && savedKey === testKey) || (!result.success && savedKey === null),
+                        result.success ? 'API key persisted to configuration' : `API key validation failed: ${result.error}`
+                    );
+                } catch (error) {
+                    addTestResult('Configuration persistence', false, error.message);
+                }
+
+                // Test 5: Engine availability after API key set
+                try {
+                    dashscopeEngine.setApiKey('some-test-key');
+                    const available = dashscopeEngine.isAvailable();
+                    addTestResult(
+                        'Engine availability with API key',
+                        available,
+                        available ? 'Engine available with API key' : 'Engine should be available with API key'
+                    );
+                } catch (error) {
+                    addTestResult('Engine availability with API key', false, error.message);
+                }
+
+                // Test 6: API key format validation
+                try {
+                    dashscopeEngine.setApiKey('short');
+                    try {
+                        await dashscopeEngine.initialize();
+                        addTestResult('API key format validation', false, 'Should reject short API key');
+                    } catch (initError) {
+                        addTestResult(
+                            'API key format validation',
+                            initError.message.includes('Invalid'),
+                            'Correctly rejected short API key'
+                        );
+                    }
+                } catch (error) {
+                    addTestResult('API key format validation', false, error.message);
+                }
+
+                // Test 7: Configuration validation
+                try {
+                    const config = service.config;
+                    config.data.engine = 'dashscope';
+                    config.data.dashscopeApiKey = null;
+                    
+                    const validation = config.validate();
+                    addTestResult(
+                        'Configuration validation',
+                        !validation.isValid && validation.errors.some(e => e.includes('API key')),
+                        validation.isValid ? 'Should require API key for DashScope' : 'Correctly requires API key for DashScope'
+                    );
+                } catch (error) {
+                    addTestResult('Configuration validation', false, error.message);
+                }
+
+                // Test 8: Clear API key functionality
+                try {
+                    dashscopeEngine.setApiKey('test-key');
+                    dashscopeEngine.setApiKey(null);
+                    
+                    const available = dashscopeEngine.isAvailable();
+                    addTestResult(
+                        'Clear API key functionality',
+                        !available,
+                        available ? 'Should not be available after clearing API key' : 'Correctly not available after clearing API key'
+                    );
+                } catch (error) {
+                    addTestResult('Clear API key functionality', false, error.message);
+                }
+
+                // Test 9: API key format validation
+                try {
+                    const shortKeyValid = dashscopeEngine.isValidApiKeyFormat('short');
+                    const longKeyValid = dashscopeEngine.isValidApiKeyFormat('this-is-a-longer-api-key-12345');
+                    const spaceKeyValid = dashscopeEngine.isValidApiKeyFormat('key with spaces');
+                    
+                    addTestResult(
+                        'API key format validation',
+                        !shortKeyValid && longKeyValid && !spaceKeyValid,
+                        `Short key: ${shortKeyValid}, Long key: ${longKeyValid}, Space key: ${spaceKeyValid}`
+                    );
+                } catch (error) {
+                    addTestResult('API key format validation', false, error.message);
+                }
+
+                // Test 10: API key encoding/decoding
+                try {
+                    const config = service.config;
+                    const testKey = 'test-api-key-12345';
+                    
+                    // Test encoding
+                    const encoded = config.encodeApiKey(testKey);
+                    const decoded = config.decodeApiKey(encoded);
+                    
+                    addTestResult(
+                        'API key encoding/decoding',
+                        encoded !== testKey && decoded === testKey && encoded.startsWith('enc_'),
+                        `Original: ${testKey}, Encoded: ${encoded}, Decoded: ${decoded}`
+                    );
+                } catch (error) {
+                    addTestResult('API key encoding/decoding', false, error.message);
+                }
+
+            } catch (error) {
+                addTestResult('Test setup', false, `Failed to initialize: ${error.message}`);
+            }
+
+            // Display results
+            displayTestResults();
+        }
+
+        function displayTestResults() {
+            const resultsDiv = document.getElementById('testResults');
+            const passed = testResults.filter(t => t.success).length;
+            const total = testResults.length;
+            
+            let html = `<div class="test-result ${passed === total ? 'success' : 'error'}">
+                <h4>Test Results: ${passed}/${total} passed</h4>
+            </div>`;
+            
+            testResults.forEach(test => {
+                html += `<div class="test-result ${test.success ? 'success' : 'error'}">
+                    ${test.success ? '✅' : '❌'} ${test.name}: ${test.message}
+                </div>`;
+            });
+            
+            resultsDiv.innerHTML = html;
+        }
+
+        // Initialize on page load
+        window.addEventListener('load', async () => {
+            try {
+                await initTTSService();
+                console.log('TTS Service initialized successfully');
+            } catch (error) {
+                console.error('Failed to initialize TTS Service:', error);
+            }
+        });
+    </script>
+</body>
+</html>

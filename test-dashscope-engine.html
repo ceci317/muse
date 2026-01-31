@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DashScope Engine Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .test-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .test-section h2 {
+            color: #ffd700;
+            margin-bottom: 15px;
+        }
+        
+        .form-group {
+            margin: 15px 0;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            font-size: 14px;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        
+        .status.success {
+            background: rgba(46, 204, 113, 0.2);
+            border: 1px solid #2ecc71;
+            color: #2ecc71;
+        }
+        
+        .status.error {
+            background: rgba(231, 76, 60, 0.2);
+            border: 1px solid #e74c3c;
+            color: #e74c3c;
+        }
+        
+        .status.info {
+            background: rgba(52, 152, 219, 0.2);
+            border: 1px solid #3498db;
+            color: #3498db;
+        }
+        
+        .test-results {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .voice-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        
+        .voice-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .voice-card h4 {
+            margin: 0 0 10px 0;
+            color: #ffd700;
+        }
+        
+        .voice-card p {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 DashScope Engine Test Suite</h1>
+        
+        <div class="test-section">
+            <h2>🔧 Engine Configuration</h2>
+            <div class="form-group">
+                <label for="apiKey">DashScope API Key:</label>
+                <input type="password" id="apiKey" placeholder="Enter your DashScope API key">
+            </div>
+            <button onclick="configureApiKey()">Configure API Key</button>
+            <button onclick="validateApiKey()">Validate API Key</button>
+            <div id="configStatus"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🎤 Voice Information</h2>
+            <button onclick="showVoiceInfo()">Show Available Voices</button>
+            <div id="voiceInfo"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🧪 Unit Tests</h2>
+            <button onclick="runUnitTests()">Run All Unit Tests</button>
+            <div id="testResults" class="test-results"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🎵 Synthesis Test</h2>
+            <div class="form-group">
+                <label for="testText">Text to Synthesize:</label>
+                <textarea id="testText" rows="3" placeholder="Enter text to test synthesis">你好，这是DashScope音频合成测试。</textarea>
+            </div>
+            <div class="form-group">
+                <label for="testVoice">Voice:</label>
+                <select id="testVoice">
+                    <option value="yushao">🍷 低沉御少音 (Ethan)</option>
+                    <option value="shaonian">❄️ 清冷少年音 (Cherry)</option>
+                    <option value="dashu">🥃 温柔大叔音 (Dylan)</option>
+                </select>
+            </div>
+            <button onclick="testSynthesis()">Test Synthesis</button>
+            <button onclick="stopSynthesis()">Stop</button>
+            <div id="synthesisStatus"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>📊 Engine Status</h2>
+            <button onclick="showEngineStatus()">Show Status</button>
+            <div id="engineStatus"></div>
+        </div>
+    </div>
+
+    <!-- Include the TTS classes -->
+    <script src="js/tts/DashScopeEngine.js"></script>
+    
+    <script>
+        let dashscopeEngine = null;
+        
+        // Initialize engine
+        function initializeEngine() {
+            if (!dashscopeEngine) {
+                dashscopeEngine = new DashScopeEngine();
+            }
+            return dashscopeEngine;
+        }
+        
+        // Configure API key
+        function configureApiKey() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const statusDiv = document.getElementById('configStatus');
+            
+            if (!apiKey) {
+                statusDiv.innerHTML = '<div class="status error">Please enter an API key</div>';
+                return;
+            }
+            
+            const engine = initializeEngine();
+            engine.setApiKey(apiKey);
+            
+            statusDiv.innerHTML = '<div class="status success">API key configured successfully</div>';
+        }
+        
+        // Validate API key
+        async function validateApiKey() {
+            const statusDiv = document.getElementById('configStatus');
+            const engine = initializeEngine();
+            
+            if (!engine.apiKey) {
+                statusDiv.innerHTML = '<div class="status error">Please configure API key first</div>';
+                return;
+            }
+            
+            statusDiv.innerHTML = '<div class="status info">Validating API key...</div>';
+            
+            try {
+                const isValid = await engine.validateApiKey();
+                if (isValid) {
+                    statusDiv.innerHTML = '<div class="status success">API key is valid ✅</div>';
+                } else {
+                    statusDiv.innerHTML = '<div class="status error">API key is invalid ❌</div>';
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="status error">Validation failed: ${error.message}</div>`;
+            }
+        }
+        
+        // Show voice information
+        function showVoiceInfo() {
+            const engine = initializeEngine();
+            const voices = engine.getAvailableVoices();
+            const capabilities = engine.getCapabilities();
+            
+            let html = '<div class="voice-info">';
+            
+            voices.forEach(voice => {
+                html += `
+                    <div class="voice-card">
+                        <h4>${voice.name}</h4>
+                        <p><strong>ID:</strong> ${voice.id}</p>
+                        <p><strong>Description:</strong> ${voice.description}</p>
+                        <p><strong>Engine:</strong> ${voice.engine}</p>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            
+            html += `
+                <div class="voice-card" style="margin-top: 20px;">
+                    <h4>Engine Capabilities</h4>
+                    <p><strong>Streaming:</strong> ${capabilities.streaming ? '✅' : '❌'}</p>
+                    <p><strong>Languages:</strong> ${capabilities.languages.join(', ')}</p>
+                    <p><strong>Formats:</strong> ${capabilities.formats.join(', ')}</p>
+                    <p><strong>Max Text Length:</strong> ${capabilities.maxTextLength}</p>
+                    <p><strong>Requires API Key:</strong> ${capabilities.requiresApiKey ? '✅' : '❌'}</p>
+                </div>
+            `;
+            
+            document.getElementById('voiceInfo').innerHTML = html;
+        }
+        
+        // Run unit tests
+        function runUnitTests() {
+            const resultsDiv = document.getElementById('testResults');
+            resultsDiv.innerHTML = 'Running tests...\n';
+            
+            const engine = initializeEngine();
+            let testsPassed = 0;
+            let testsTotal = 0;
+            let results = '';
+            
+            function test(name, testFn) {
+                testsTotal++;
+                try {
+                    testFn();
+                    results += `✅ ${name}\n`;
+                    testsPassed++;
+                } catch (error) {
+                    results += `❌ ${name}: ${error.message}\n`;
+                }
+                resultsDiv.innerHTML = results;
+            }
+            
+            // Test 1: Constructor
+            test('Constructor initializes correctly', () => {
+                if (engine.name !== 'dashscope') throw new Error('Wrong engine name');
+                if (engine.displayName !== 'DashScope TTS') throw new Error('Wrong display name');
+                if (!engine.voiceMap.yushao) throw new Error('Missing yushao voice');
+            });
+            
+            // Test 2: Voice mapping
+            test('Voice mapping is correct', () => {
+                if (engine.voiceMap.yushao.voice !== 'Ethan') throw new Error('Wrong yushao mapping');
+                if (engine.voiceMap.shaonian.voice !== 'Cherry') throw new Error('Wrong shaonian mapping');
+                if (engine.voiceMap.dashu.voice !== 'Dylan') throw new Error('Wrong dashu mapping');
+            });
+            
+            // Test 3: API key management
+            test('API key management works', () => {
+                const testEngine = new DashScopeEngine();
+                if (testEngine.isAvailable()) throw new Error('Should not be available without key');
+                
+                testEngine.setApiKey('test-key');
+                if (!testEngine.isAvailable()) throw new Error('Should be available with key');
+            });
+            
+            // Test 4: Available voices
+            test('getAvailableVoices returns correct format', () => {
+                const voices = engine.getAvailableVoices();
+                if (!Array.isArray(voices)) throw new Error('Should return array');
+                if (voices.length !== 3) throw new Error('Should have 3 voices');
+                
+                const voice = voices[0];
+                if (!voice.id || !voice.name || !voice.description) {
+                    throw new Error('Voice missing required properties');
+                }
+            });
+            
+            // Test 5: Capabilities
+            test('getCapabilities returns correct structure', () => {
+                const caps = engine.getCapabilities();
+                if (caps.streaming !== true) throw new Error('Should support streaming');
+                if (!Array.isArray(caps.languages)) throw new Error('Languages should be array');
+                if (caps.requiresApiKey !== true) throw new Error('Should require API key');
+            });
+            
+            // Test 6: Validation
+            test('validateOptions works correctly', () => {
+                const valid = engine.validateOptions({ voice: 'yushao', speed: 1.0 });
+                if (!valid.isValid) throw new Error('Valid options should pass');
+                
+                const invalid = engine.validateOptions({ voice: 'invalid' });
+                if (invalid.isValid) throw new Error('Invalid voice should fail');
+            });
+            
+            // Test 7: Status
+            test('getStatus returns correct structure', () => {
+                const status = engine.getStatus();
+                if (typeof status.isPlaying !== 'boolean') throw new Error('isPlaying should be boolean');
+                if (typeof status.apiKeyConfigured !== 'boolean') throw new Error('apiKeyConfigured should be boolean');
+            });
+            
+            // Test 8: Base64 conversion
+            test('base64ToBlob works correctly', () => {
+                try {
+                    const blob = engine.base64ToBlob('dGVzdA=='); // 'test' in base64
+                    if (!(blob instanceof Blob)) throw new Error('Should return Blob');
+                } catch (error) {
+                    throw new Error(`Base64 conversion failed: ${error.message}`);
+                }
+            });
+            
+            // Summary
+            results += `\nTest Results: ${testsPassed}/${testsTotal} tests passed\n`;
+            if (testsPassed === testsTotal) {
+                results += '🎉 All tests passed!\n';
+            } else {
+                results += '❌ Some tests failed\n';
+            }
+            
+            resultsDiv.innerHTML = results;
+        }
+        
+        // Test synthesis
+        async function testSynthesis() {
+            const text = document.getElementById('testText').value.trim();
+            const voice = document.getElementById('testVoice').value;
+            const statusDiv = document.getElementById('synthesisStatus');
+            
+            if (!text) {
+                statusDiv.innerHTML = '<div class="status error">Please enter text to synthesize</div>';
+                return;
+            }
+            
+            const engine = initializeEngine();
+            
+            if (!engine.apiKey) {
+                statusDiv.innerHTML = '<div class="status error">Please configure API key first</div>';
+                return;
+            }
+            
+            statusDiv.innerHTML = '<div class="status info">Synthesizing audio...</div>';
+            
+            try {
+                await engine.synthesize(text, { voice: voice });
+                statusDiv.innerHTML = '<div class="status success">Synthesis completed successfully! 🎵</div>';
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="status error">Synthesis failed: ${error.message}</div>`;
+            }
+        }
+        
+        // Stop synthesis
+        function stopSynthesis() {
+            const engine = initializeEngine();
+            engine.stop();
+            document.getElementById('synthesisStatus').innerHTML = '<div class="status info">Synthesis stopped</div>';
+        }
+        
+        // Show engine status
+        function showEngineStatus() {
+            const engine = initializeEngine();
+            const status = engine.getStatus();
+            
+            const html = `
+                <div class="voice-card">
+                    <h4>Engine Status</h4>
+                    <p><strong>Is Playing:</strong> ${status.isPlaying ? '✅' : '❌'}</p>
+                    <p><strong>Is Paused:</strong> ${status.isPaused ? '✅' : '❌'}</p>
+                    <p><strong>Has Current Audio:</strong> ${status.currentAudio ? '✅' : '❌'}</p>
+                    <p><strong>API Key Configured:</strong> ${status.apiKeyConfigured ? '✅' : '❌'}</p>
+                    <p><strong>Engine Available:</strong> ${engine.isAvailable() ? '✅' : '❌'}</p>
+                </div>
+            `;
+            
+            document.getElementById('engineStatus').innerHTML = html;
+        }
+        
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            initializeEngine();
+            showVoiceInfo();
+        });
+    </script>
+</body>
+</html>

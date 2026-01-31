@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TTS Service Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-900 text-white p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold mb-8">TTS Service Architecture Test</h1>
+        
+        <!-- Engine Selection -->
+        <div class="mb-8 p-6 bg-gray-800 rounded-lg">
+            <h2 class="text-xl font-semibold mb-4">Engine Selection</h2>
+            <div class="flex gap-4 mb-4">
+                <button id="web-speech-btn" onclick="switchEngine('web-speech')" 
+                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded">
+                    Web Speech API
+                </button>
+                <button id="dashscope-btn" onclick="switchEngine('dashscope')" 
+                        class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded">
+                    DashScope TTS
+                </button>
+            </div>
+            <div id="current-engine" class="text-sm text-gray-400"></div>
+        </div>
+        
+        <!-- API Key Configuration -->
+        <div class="mb-8 p-6 bg-gray-800 rounded-lg">
+            <h2 class="text-xl font-semibold mb-4">DashScope API Key</h2>
+            <div class="flex gap-4">
+                <input type="password" id="api-key-input" placeholder="Enter DashScope API Key" 
+                       class="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white">
+                <button onclick="configureApiKey()" 
+                        class="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded">
+                    Configure
+                </button>
+            </div>
+            <div id="api-key-status" class="mt-2 text-sm"></div>
+        </div>
+        
+        <!-- Voice Selection -->
+        <div class="mb-8 p-6 bg-gray-800 rounded-lg">
+            <h2 class="text-xl font-semibold mb-4">Voice Selection</h2>
+            <div class="grid grid-cols-3 gap-4">
+                <button onclick="selectVoice('yushao')" 
+                        class="voice-btn p-4 bg-gray-700 hover:bg-gray-600 rounded text-center">
+                    <div class="text-2xl mb-2">🍷</div>
+                    <div class="font-semibold">低沉御少音</div>
+                    <div class="text-xs text-gray-400">磁性 · 成熟</div>
+                </button>
+                <button onclick="selectVoice('shaonian')" 
+                        class="voice-btn p-4 bg-gray-700 hover:bg-gray-600 rounded text-center">
+                    <div class="text-2xl mb-2">❄️</div>
+                    <div class="font-semibold">清冷少年音</div>
+                    <div class="text-xs text-gray-400">清脆 · 禁欲</div>
+                </button>
+                <button onclick="selectVoice('dashu')" 
+                        class="voice-btn p-4 bg-gray-700 hover:bg-gray-600 rounded text-center">
+                    <div class="text-2xl mb-2">🥃</div>
+                    <div class="font-semibold">温柔大叔音</div>
+                    <div class="text-xs text-gray-400">低沉 · 包容</div>
+                </button>
+            </div>
+            <div id="current-voice" class="mt-4 text-sm text-gray-400"></div>
+        </div>
+        
+        <!-- Text Input and Synthesis -->
+        <div class="mb-8 p-6 bg-gray-800 rounded-lg">
+            <h2 class="text-xl font-semibold mb-4">Text Synthesis</h2>
+            <div class="mb-4">
+                <textarea id="text-input" rows="4" placeholder="Enter text to synthesize..." 
+                          class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white">
+你好，这是一个测试文本。我们正在测试新的TTS服务架构。
+                </textarea>
+            </div>
+            <div class="flex gap-4">
+                <button onclick="synthesizeText()" 
+                        class="px-6 py-2 bg-red-600 hover:bg-red-700 rounded">
+                    <i class="fa-solid fa-play mr-2"></i>Synthesize
+                </button>
+                <button onclick="stopSynthesis()" 
+                        class="px-6 py-2 bg-gray-600 hover:bg-gray-700 rounded">
+                    <i class="fa-solid fa-stop mr-2"></i>Stop
+                </button>
+                <button onclick="playSampleVoice()" 
+                        class="px-6 py-2 bg-yellow-600 hover:bg-yellow-700 rounded">
+                    <i class="fa-solid fa-volume-high mr-2"></i>Sample
+                </button>
+            </div>
+        </div>
+        
+        <!-- Status Display -->
+        <div class="mb-8 p-6 bg-gray-800 rounded-lg">
+            <h2 class="text-xl font-semibold mb-4">Service Status</h2>
+            <div id="status-display" class="text-sm font-mono bg-gray-900 p-4 rounded"></div>
+            <button onclick="refreshStatus()" 
+                    class="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded">
+                Refresh Status
+            </button>
+        </div>
+        
+        <!-- Log Display -->
+        <div class="p-6 bg-gray-800 rounded-lg">
+            <h2 class="text-xl font-semibold mb-4">Log</h2>
+            <div id="log-display" class="text-sm font-mono bg-gray-900 p-4 rounded h-64 overflow-y-auto"></div>
+            <button onclick="clearLog()" 
+                    class="mt-4 px-4 py-2 bg-red-600 hover:bg-red-700 rounded">
+                Clear Log
+            </button>
+        </div>
+    </div>
+
+    <!-- Load TTS Service Components -->
+    <script src="js/tts/TTSConfig.js"></script>
+    <script src="js/tts/WebSpeechEngine.js"></script>
+    <script src="js/tts/DashScopeEngine.js"></script>
+    <script src="js/tts/ErrorHandler.js"></script>
+    <script src="js/tts/StreamingProcessor.js"></script>
+    <script src="js/tts/TTSService.js"></script>
+    <script src="js/tts/index.js"></script>
+
+    <script>
+        // Global variables
+        let currentVoiceType = 'yushao';
+        let ttsService = null;
+        
+        // Initialize TTS service on page load
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                log('Initializing TTS Service...');
+                ttsService = await getTTSService();
+                log('TTS Service initialized successfully');
+                
+                // Set up event listeners
+                ttsService.addEventListener('engine-switched', (event) => {
+                    log(`Engine switched from ${event.from} to ${event.to}`);
+                    updateUI();
+                });
+                
+                ttsService.addEventListener('synthesis-started', (event) => {
+                    log(`Synthesis started with ${event.engine} engine`);
+                });
+                
+                ttsService.addEventListener('synthesis-ended', (event) => {
+                    log(`Synthesis completed`);
+                });
+                
+                ttsService.addEventListener('synthesis-error', (event) => {
+                    log(`Synthesis error: ${event.error.message}`, 'error');
+                });
+                
+                // Initial UI update
+                updateUI();
+                
+            } catch (error) {
+                log(`Failed to initialize TTS Service: ${error.message}`, 'error');
+            }
+        });
+        
+        // Switch TTS engine
+        async function switchEngine(engineType) {
+            try {
+                log(`Switching to ${engineType} engine...`);
+                await switchTTSEngine(engineType);
+                updateUI();
+            } catch (error) {
+                log(`Failed to switch engine: ${error.message}`, 'error');
+            }
+        }
+        
+        // Configure API key
+        async function configureApiKey() {
+            const apiKey = document.getElementById('api-key-input').value.trim();
+            if (!apiKey) {
+                log('Please enter an API key', 'error');
+                return;
+            }
+            
+            try {
+                log('Configuring DashScope API key...');
+                const isValid = await configureDashScopeApiKey(apiKey);
+                
+                if (isValid) {
+                    log('API key configured successfully');
+                    document.getElementById('api-key-status').innerHTML = 
+                        '<span class="text-green-400">✓ API key is valid</span>';
+                } else {
+                    log('Invalid API key', 'error');
+                    document.getElementById('api-key-status').innerHTML = 
+                        '<span class="text-red-400">✗ Invalid API key</span>';
+                }
+                
+                updateUI();
+            } catch (error) {
+                log(`API key configuration failed: ${error.message}`, 'error');
+                document.getElementById('api-key-status').innerHTML = 
+                    `<span class="text-red-400">✗ ${error.message}</span>`;
+            }
+        }
+        
+        // Select voice
+        async function selectVoice(voiceType) {
+            try {
+                currentVoiceType = voiceType;
+                await updateTTSConfiguration('voice', voiceType);
+                log(`Voice selected: ${voiceType}`);
+                updateUI();
+            } catch (error) {
+                log(`Failed to select voice: ${error.message}`, 'error');
+            }
+        }
+        
+        // Synthesize text
+        async function synthesizeText() {
+            const text = document.getElementById('text-input').value.trim();
+            if (!text) {
+                log('Please enter text to synthesize', 'error');
+                return;
+            }
+            
+            try {
+                log(`Synthesizing text: "${text.substring(0, 50)}..."`);
+                await speakText(text, { voice: currentVoiceType });
+                log('Text synthesis completed');
+            } catch (error) {
+                log(`Synthesis failed: ${error.message}`, 'error');
+            }
+        }
+        
+        // Stop synthesis
+        async function stopSynthesis() {
+            try {
+                await stopTTS();
+                log('Synthesis stopped');
+            } catch (error) {
+                log(`Failed to stop synthesis: ${error.message}`, 'error');
+            }
+        }
+        
+        // Play sample voice
+        async function playSampleVoice() {
+            try {
+                log(`Playing sample for voice: ${currentVoiceType}`);
+                await playSample(currentVoiceType);
+                log('Sample playback completed');
+            } catch (error) {
+                log(`Sample playback failed: ${error.message}`, 'error');
+            }
+        }
+        
+        // Update UI elements
+        async function updateUI() {
+            try {
+                const config = await getTTSConfiguration();
+                const status = await getTTSStatus();
+                
+                // Update current engine display
+                document.getElementById('current-engine').textContent = 
+                    `Current Engine: ${status.currentEngine}`;
+                
+                // Update engine buttons
+                document.querySelectorAll('#web-speech-btn, #dashscope-btn').forEach(btn => {
+                    btn.classList.remove('ring-2', 'ring-white');
+                });
+                
+                if (status.currentEngine === 'web-speech') {
+                    document.getElementById('web-speech-btn').classList.add('ring-2', 'ring-white');
+                } else if (status.currentEngine === 'dashscope') {
+                    document.getElementById('dashscope-btn').classList.add('ring-2', 'ring-white');
+                }
+                
+                // Update current voice display
+                document.getElementById('current-voice').textContent = 
+                    `Current Voice: ${config.voice}`;
+                
+                // Update voice buttons
+                document.querySelectorAll('.voice-btn').forEach(btn => {
+                    btn.classList.remove('ring-2', 'ring-blue-400');
+                });
+                
+                const currentVoiceBtn = document.querySelector(`[onclick="selectVoice('${config.voice}')"]`);
+                if (currentVoiceBtn) {
+                    currentVoiceBtn.classList.add('ring-2', 'ring-blue-400');
+                }
+                
+            } catch (error) {
+                log(`Failed to update UI: ${error.message}`, 'error');
+            }
+        }
+        
+        // Refresh status display
+        async function refreshStatus() {
+            try {
+                const status = await getTTSStatus();
+                const engines = await getAvailableEngines();
+                const voices = await getAvailableVoices();
+                
+                const statusInfo = {
+                    'Service Status': status,
+                    'Available Engines': engines,
+                    'Available Voices': voices
+                };
+                
+                document.getElementById('status-display').textContent = 
+                    JSON.stringify(statusInfo, null, 2);
+                    
+            } catch (error) {
+                log(`Failed to refresh status: ${error.message}`, 'error');
+            }
+        }
+        
+        // Logging function
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${type.toUpperCase()}: ${message}`;
+            
+            const logDisplay = document.getElementById('log-display');
+            const logElement = document.createElement('div');
+            logElement.textContent = logEntry;
+            
+            if (type === 'error') {
+                logElement.className = 'text-red-400';
+            } else if (type === 'warning') {
+                logElement.className = 'text-yellow-400';
+            } else {
+                logElement.className = 'text-green-400';
+            }
+            
+            logDisplay.appendChild(logElement);
+            logDisplay.scrollTop = logDisplay.scrollHeight;
+            
+            // Also log to console
+            console.log(logEntry);
+        }
+        
+        // Clear log
+        function clearLog() {
+            document.getElementById('log-display').innerHTML = '';
+        }
+    </script>
+</body>
+</html>
