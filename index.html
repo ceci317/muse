@@ -100,6 +100,26 @@
         }
         .voice-card.selected .indicator-dot { display: block; }
         
+        /* 问卷选项样式 */
+        .option-item {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .selected-option {
+            border-color: #e11d48 !important;
+            background: rgba(225, 29, 72, 0.15) !important;
+            transform: scale(1.02) !important;
+            box-shadow: 0 0 20px rgba(225, 29, 72, 0.3) !important;
+        }
+        
+        .option-item:hover {
+            transform: scale(1.02);
+        }
+        
+        .selected-option:hover {
+            transform: scale(1.03) !important;
+        }
+        
         @media (max-width: 768px) {
             #chat-interface {
                 position: fixed; inset: 0; z-index: 60; background-color: #0a0a0a;
@@ -386,21 +406,61 @@
         function renderQuestion() {
             const q = quizData[currentStep];
             const container = document.getElementById('question-container');
-            document.getElementById('prism-step-indicator').innerText = `STEP ${currentStep + 1} / ${quizData.length}`;
-            let html = `<h3 class="text-2xl font-serif text-white mb-8 animate-fade-in">${q.question}</h3><div class="grid grid-cols-1 gap-3 animate-fade-in">`;
-            q.options.forEach(opt => {
-                const isSelected = userProfile[q.id] === opt.value;
-                html += `<div onclick="selectOption('${q.id}', '${opt.value}')" class="cursor-pointer border border-white/10 rounded-lg p-4 transition-all hover:bg-white/5 hover:border-muse-rose/50 ${isSelected ? 'selected-option' : ''}"><div class="font-serif text-lg">${opt.label}</div></div>`;
-            });
-            container.innerHTML = html + `</div>`;
-            document.getElementById('prev-btn').style.visibility = currentStep > 0 ? 'visible' : 'hidden';
+            
+            // 添加淡出效果
+            container.style.opacity = '0';
+            container.style.transform = 'translateY(10px)';
+            
+            setTimeout(() => {
+                // 更新内容
+                document.getElementById('prism-step-indicator').innerText = `STEP ${currentStep + 1} / ${quizData.length}`;
+                let html = `<h3 class="text-2xl font-serif text-white mb-8">${q.question}</h3><div class="grid grid-cols-1 gap-3">`;
+                q.options.forEach(opt => {
+                    const isSelected = userProfile[q.id] === opt.value;
+                    html += `<div onclick="selectOption('${q.id}', '${opt.value}')" class="option-item cursor-pointer border border-white/10 rounded-lg p-4 transition-all duration-300 ease-out hover:bg-white/5 hover:border-muse-rose/50 hover:transform hover:scale-105 ${isSelected ? 'selected-option' : ''}"><div class="font-serif text-lg">${opt.label}</div></div>`;
+                });
+                container.innerHTML = html + `</div>`;
+                document.getElementById('prev-btn').style.visibility = currentStep > 0 ? 'visible' : 'hidden';
+                
+                // 添加淡入效果
+                container.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
+                container.style.opacity = '1';
+                container.style.transform = 'translateY(0)';
+            }, 50);
         }
         function selectOption(key, value) {
             userProfile[key] = value;
-            renderQuestion();
-            setTimeout(() => {
-                if(currentStep < quizData.length - 1) { currentStep++; renderQuestion(); } else { finishPrism(); }
-            }, 300);
+            
+            // 立即显示选中状态，避免重新渲染
+            const clickedElement = event.target.closest('.option-item');
+            if (clickedElement) {
+                // 移除其他选项的选中状态
+                const container = document.getElementById('question-container');
+                container.querySelectorAll('.selected-option').forEach(el => {
+                    el.classList.remove('selected-option');
+                });
+                
+                // 添加当前选项的选中状态
+                clickedElement.classList.add('selected-option');
+                
+                // 添加点击反馈动画
+                clickedElement.style.transform = 'scale(0.98)';
+                setTimeout(() => {
+                    clickedElement.style.transform = '';
+                }, 100);
+            }
+            
+            // 使用requestAnimationFrame确保动画流畅
+            requestAnimationFrame(() => {
+                setTimeout(() => {
+                    if(currentStep < quizData.length - 1) { 
+                        currentStep++; 
+                        renderQuestion(); 
+                    } else { 
+                        finishPrism(); 
+                    }
+                }, 200); // 进一步减少延迟
+            });
         }
         function prevQuestion() { if(currentStep>0) { currentStep--; renderQuestion(); } }
         function finishPrism() {
