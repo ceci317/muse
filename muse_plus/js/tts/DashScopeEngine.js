@@ -184,7 +184,7 @@ class DashScopeEngine {
         const voiceConfig = this.voiceMap[options.voice] || this.voiceMap['shaonian'];
         
         const requestBody = {
-            model: 'qwen3-tts-flash',
+            model: 'qwen3-tts-flash-2025-11-27',
             input: {
                 text: text,
                 voice: voiceConfig.voice,

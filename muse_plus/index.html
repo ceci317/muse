@@ -834,7 +834,7 @@
                     const url = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
                     const res = await fetch(url, {
                         method:'POST', headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${key}` },
-                        body: JSON.stringify({ model:'qwen-plus', messages:[{role:'system',content:system},{role:'user',content:prompt}] })
+                        body: JSON.stringify({ model:'qwen-plus-2025-12-01', messages:[{role:'system',content:system},{role:'user',content:prompt}] })
                     });
                     const data = await res.json();
                     return data.choices?.[0]?.message?.content || "Error";
