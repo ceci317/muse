@@ -817,6 +817,34 @@
                 console.log(prefix, message, data);
             }
         }
+
+        // 统一读取“已保存的音色偏好”（优先使用新配置 muse_tts_config，其次兼容旧字段 muse_voice_type）
+        function getSavedTtsVoice() {
+            try {
+                if (typeof TTSConfig !== 'undefined') {
+                    const cfg = new TTSConfig();
+                    const v = cfg.get('voice');
+                    if (v) return v;
+                }
+            } catch (e) {
+                // ignore
+            }
+            return localStorage.getItem('muse_voice_type') || 'yushao';
+        }
+
+        // 同步音色到旧存储字段，确保对话页与配置页一致
+        function syncVoicePreference(voice) {
+            if (!voice) return;
+            currentVoice = voice;
+            localStorage.setItem('muse_voice_type', voice);
+            try {
+                if (ttsService && typeof ttsService.updateConfiguration === 'function') {
+                    ttsService.updateConfiguration('voice', voice);
+                }
+            } catch (e) {
+                // ignore
+            }
+        }
         
         // 切换调试模式
         function toggleDebugMode() {
@@ -833,26 +861,42 @@
                 
                 try {
                     ttsService = new TTSService();
+
+                    // 先同步一次音色（确保对话页的 currentVoice 与配置一致）
+                    syncVoicePreference(getSavedTtsVoice());
                     
                     // 设置 DashScope API 密钥
                     const dashScopeKey = getApiKey('dashscope');
                     debugLog('DashScope API Key 状态:', dashScopeKey ? '已配置' : '未配置');
+
+                    // 尊重配置页选择的引擎：只有当配置为 dashscope 时，才尝试切到 dashscope
+                    const desiredEngine = (ttsService.getConfiguration && ttsService.getConfiguration().engine) || 'web-speech';
+                    debugLog('期望引擎(desiredEngine):', desiredEngine);
                     
                     if (dashScopeKey) {
                         debugLog('配置 DashScope API 密钥...');
                         const result = await ttsService.configureDashScopeApiKey(dashScopeKey);
                         debugLog('DashScope 配置结果:', 'info', result);
                         
-                        if (result.success) {
-                            await ttsService.switchEngine('dashscope');
-                            debugLog('已切换到 DashScope 引擎');
+                        if (desiredEngine === 'dashscope') {
+                            if (result.success) {
+                                await ttsService.switchEngine('dashscope');
+                                debugLog('已切换到 DashScope 引擎');
+                            } else {
+                                debugLog('DashScope 配置失败，回退 WebSpeech 引擎', 'warn', result.error);
+                                await ttsService.switchEngine('web-speech');
+                            }
                         } else {
-                            debugLog('DashScope 配置失败，使用 WebSpeech 引擎', 'warn', result.error);
-                            await ttsService.switchEngine('web-speech');
+                            // 配置页未选择 dashscope：保持 web-speech，避免意外切换
+                            if (ttsService.getCurrentEngine().id !== 'web-speech') {
+                                await ttsService.switchEngine('web-speech');
+                            }
                         }
                     } else {
                         debugLog('未配置 DashScope API 密钥，使用 WebSpeech 引擎');
-                        await ttsService.switchEngine('web-speech');
+                        if (ttsService.getCurrentEngine().id !== 'web-speech') {
+                            await ttsService.switchEngine('web-speech');
+                        }
                     }
                     
                     debugLog('TTS 服务初始化完成');
@@ -877,16 +921,17 @@
             btnIcon.className = "fa-solid fa-circle-notch fa-spin";
             
             try {
-                // 首先尝试WebSpeech（更可靠）
-                debugLog('优先使用WebSpeech进行语音试听');
-                speakTextFallback(text, type);
-                
-                // 延迟恢复按钮状态
-                setTimeout(() => {
-                    btnIcon.className = originalClass;
-                }, 1000);
-                
-                debugLog('语音样本播放成功（WebSpeech）');
+                const service = await initTTSService();
+                debugLog(`使用引擎: ${service.getCurrentEngine().id}`);
+                debugLog(`合成文本: "${text}"`);
+                debugLog(`音色类型: ${type}`);
+
+                const options = { voice: type };
+                debugLog(`试听选项:`, 'info', options);
+
+                await service.synthesize(text, options);
+                btnIcon.className = originalClass;
+                debugLog('语音样本播放成功');
                 
             } catch (error) {
                 debugLog('语音样本播放失败', 'error', error);
@@ -908,14 +953,30 @@
             }
             
             try {
-                // 优先使用WebSpeech（更可靠）
-                debugLog('使用WebSpeech进行语音合成');
-                speakTextFallback(text, type);
-                debugLog('语音合成成功（WebSpeech）');
+                const service = await initTTSService();
+                debugLog(`使用引擎: ${service.getCurrentEngine().id}`);
+
+                const config = service.getConfiguration();
+                debugLog(`当前配置:`, 'info', {
+                    voice: config.voice,
+                    engine: config.engine,
+                    volume: config.volume,
+                    speed: config.speed
+                });
+
+                const options = { voice: type };
+                debugLog(`合成选项:`, 'info', options);
+
+                await service.synthesize(text, options);
+                debugLog('语音合成成功');
                 
             } catch (error) {
                 debugLog('语音合成失败', 'error', error);
                 console.warn('语音播放失败：', error.message);
+
+                // 尝试使用后备方案（WebSpeech）
+                debugLog('尝试使用 WebSpeech 后备方案');
+                speakTextFallback(text, type);
             }
         }
 
@@ -935,25 +996,41 @@
             try {
                 const utterance = new SpeechSynthesisUtterance(text);
                 utterance.lang = 'zh-CN';
-                
-                // 根据音色类型设置参数
-                if (type === 'yushao') { 
-                    utterance.pitch = 0.7; 
-                    utterance.rate = 0.8; 
-                    utterance.volume = 0.9;
-                } else if (type === 'shaonian') { 
-                    utterance.pitch = 1.2; 
-                    utterance.rate = 1.0; 
-                    utterance.volume = 0.9;
-                } else if (type === 'dashu') { 
-                    utterance.pitch = 0.5; 
-                    utterance.rate = 0.85; 
-                    utterance.volume = 0.9;
+
+                // 从新配置里读取音量/语速（如果可用）
+                let cfgSpeed = 1.0;
+                let cfgVolume = 0.9;
+                try {
+                    if (ttsService && typeof ttsService.getConfiguration === 'function') {
+                        const cfg = ttsService.getConfiguration();
+                        if (typeof cfg.speed === 'number') cfgSpeed = cfg.speed;
+                        if (typeof cfg.volume === 'number') cfgVolume = (cfg.volume / 100);
+                    } else if (typeof TTSConfig !== 'undefined') {
+                        const cfg = new TTSConfig();
+                        const s = cfg.get('speed');
+                        const v = cfg.get('volume');
+                        if (typeof s === 'number') cfgSpeed = s;
+                        if (typeof v === 'number') cfgVolume = (v / 100);
+                    }
+                } catch (e) {
+                    // ignore
+                }
+
+                // 根据音色类型设置参数（与 WebSpeechEngine 的映射保持一致）
+                if (type === 'yushao') {
+                    utterance.pitch = 0.7;
+                    utterance.rate = 0.8 * cfgSpeed;
+                } else if (type === 'shaonian') {
+                    utterance.pitch = 1.2;
+                    utterance.rate = 1.0 * cfgSpeed;
+                } else if (type === 'dashu') {
+                    utterance.pitch = 0.5;
+                    utterance.rate = 0.85 * cfgSpeed;
                 } else {
                     utterance.pitch = 1.0;
-                    utterance.rate = 0.9;
-                    utterance.volume = 0.9;
+                    utterance.rate = 0.9 * cfgSpeed;
                 }
+                utterance.volume = cfgVolume;
                 
                 // 添加事件监听器
                 utterance.onstart = () => {
@@ -982,6 +1059,18 @@
         function selectVoice(type, el) {
             currentVoice = type;
             localStorage.setItem('muse_voice_type', type);
+
+            // 同步到新的 TTS 配置，确保“配置页/对话页”一致
+            try {
+                initTTSService().then(service => {
+                    if (service && typeof service.updateConfiguration === 'function') {
+                        service.updateConfiguration('voice', type);
+                    }
+                }).catch(() => {});
+            } catch (e) {
+                // ignore
+            }
+
             document.querySelectorAll('.voice-card').forEach(c => {
                 c.classList.remove('selected');
                 const dot = c.querySelector('.selection-dot div');
@@ -1037,7 +1126,8 @@
             
             if (!pop.classList.contains('hidden')) {
                 // 恢复语音选择状态
-                const savedVoice = localStorage.getItem('muse_voice_type') || 'yushao';
+                const savedVoice = getSavedTtsVoice();
+                syncVoicePreference(savedVoice);
                 const activeCard = document.querySelector(`.voice-card[onclick*="'${savedVoice}'"]`);
                 if(activeCard) selectVoice(savedVoice, activeCard);
                 
@@ -1060,7 +1150,9 @@
         function updateLiveSettings() {
             userProfile.orientation = document.getElementById('setting-gender').value;
             userProfile.atmosphere = document.getElementById('setting-vibe').value;
-            currentVoice = localStorage.getItem('muse_voice_type') || 'yushao';
+            currentVoice = getSavedTtsVoice();
+            // 保证 legacy 字段也跟着走（对话时读取 currentVoice / muse_voice_type）
+            syncVoicePreference(currentVoice);
             document.getElementById('current-persona-label').innerText = `${userProfile.orientation} / ${currentVoice}`;
         }
 
@@ -1581,6 +1673,9 @@ Scene Description: ${sceneDescription}`;
 
         window.onload = () => {
             console.log('页面加载完成，开始初始化...');
+
+            // 进入页面时先把“配置页保存的音色”同步到对话页使用的字段
+            syncVoicePreference(getSavedTtsVoice());
             
             // 使用图片预加载系统
             preloadImages().then((results) => {
