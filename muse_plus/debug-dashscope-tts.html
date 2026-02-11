@@ -92,6 +92,7 @@
 
     <script>
         let debugLog = document.getElementById('debug-log');
+        const isGitHubPages = window.location.hostname.endsWith('github.io');
         
         function log(message, type = 'info') {
             const timestamp = new Date().toLocaleTimeString();
@@ -163,6 +164,12 @@
         // 3. 测试 API 端点
         async function testApiEndpoint() {
             const apiKey = document.getElementById('api-key').value;
+
+            if (isGitHubPages) {
+                showResult('endpoint-status', '⚠️ GitHub Pages 上浏览器无法直接调用 DashScope（CORS）。请本地运行 ./start.sh 后访问 http://localhost:3000/debug-dashscope-tts.html', 'warning');
+                log('GitHub Pages 环境：跳过 API 端点测试（需要本地/自建代理）', 'warning');
+                return;
+            }
             
             if (!validateApiKey()) {
                 showResult('endpoint-status', '❌ 请先配置有效的 API 密钥', 'error');
@@ -203,6 +210,12 @@
             const apiKey = document.getElementById('api-key').value;
             const text = document.getElementById('test-text').value;
             const voice = document.getElementById('voice-select').value;
+
+            if (isGitHubPages) {
+                showResult('tts-status', '⚠️ GitHub Pages 上无法直连 DashScope TTS（CORS）。请本地运行 ./start.sh 或改用 Web Speech API。', 'warning');
+                log('GitHub Pages 环境：跳过 TTS 测试（需要本地/自建代理）', 'warning');
+                return;
+            }
 
             if (!validateApiKey()) {
                 showResult('tts-status', '❌ 请先配置有效的 API 密钥', 'error');
@@ -248,6 +261,12 @@
         async function testAllNewVoices() {
             const apiKey = document.getElementById('api-key').value;
             const text = document.getElementById('test-text').value || '你好，我是语音助手，这是音色测试。';
+
+            if (isGitHubPages) {
+                showResult('tts-status', '⚠️ GitHub Pages 上无法直连 DashScope TTS（CORS）。请本地运行 ./start.sh 或改用 Web Speech API。', 'warning');
+                log('GitHub Pages 环境：跳过音色测试（需要本地/自建代理）', 'warning');
+                return;
+            }
 
             if (!validateApiKey()) {
                 showResult('tts-status', '❌ 请先配置有效的 API 密钥', 'error');
@@ -330,6 +349,10 @@
         // 初始化
         log('DashScope TTS 调试工具已加载', 'success');
         log('请按顺序进行测试，或直接运行完整测试', 'info');
+        if (isGitHubPages) {
+            log('检测到 GitHub Pages：浏览器无法直连 DashScope（CORS），本页的直连测试会失败。', 'warning');
+            log('建议：本地运行 ./start.sh 后访问 http://localhost:3000/debug-dashscope-tts.html', 'warning');
+        }
     </script>
 </body>
 </html>

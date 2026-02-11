@@ -37,6 +37,38 @@ class DashScopeEngine {
         this.isInitialized = false;
         this.currentAudio = null;
     }
+
+    /**
+     * Whether we are using local proxy mode (recommended for browsers)
+     * @returns {boolean}
+     */
+    isLocalProxyMode() {
+        return (
+            typeof this.baseUrl === 'string' &&
+            (this.baseUrl.startsWith('http://localhost:3001/') || this.baseUrl.startsWith('http://127.0.0.1:3001/'))
+        );
+    }
+
+    /**
+     * Whether current environment is likely a static host where DashScope is CORS-blocked
+     * @returns {boolean}
+     */
+    isCorsRestrictedEnvironment() {
+        const isDirectDashScope = typeof this.baseUrl === 'string' && this.baseUrl.startsWith('https://dashscope.aliyuncs.com/');
+        return isDirectDashScope && !this.isLocalProxyMode();
+    }
+
+    /**
+     * Friendly guidance when running in static hosting environments like GitHub Pages
+     * @returns {string}
+     */
+    getCorsHelpMessage() {
+        const host = (typeof window !== 'undefined' && window.location && window.location.hostname) ? window.location.hostname : '';
+        const isGitHubPages = host.endsWith('github.io');
+        const hintHost = isGitHubPages ? 'GitHub Pages' : '静态站点';
+
+        return `浏览器在 ${hintHost} 上无法直接调用 DashScope TTS（跨域/CORS 限制）。\n\n可选方案：\n1) 本地运行 ./start.sh（会启动 CORS 代理），再访问 http://localhost:3000/\n2) 改用 Web Speech API（无需后端，但音质/音色由浏览器决定）`;
+    }
     
     /**
      * Initialize the DashScope engine
@@ -110,6 +142,11 @@ class DashScopeEngine {
         }
         
         try {
+            // In static hosting environments, direct calls are often blocked by CORS.
+            if (this.isCorsRestrictedEnvironment()) {
+                return { isValid: false, error: this.getCorsHelpMessage() };
+            }
+
             // Make a minimal test request to validate the API key
             const response = await fetch(`${this.baseUrl}/services/aigc/multimodal-generation/generation`, {
                 method: 'POST',
@@ -144,9 +181,15 @@ class DashScopeEngine {
             }
             
         } catch (error) {
-            if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            // In browsers, CORS failures often surface as TypeError: Failed to fetch
+            if (this.isCorsRestrictedEnvironment()) {
+                return { isValid: false, error: this.getCorsHelpMessage() };
+            }
+
+            if (error && error.name === 'TypeError' && String(error.message || '').includes('fetch')) {
                 return { isValid: false, error: 'Network error: Unable to connect to DashScope API' };
             }
+
             return { isValid: false, error: `Validation failed: ${error.message}` };
         }
     }
@@ -193,6 +236,10 @@ class DashScopeEngine {
         };
         
         try {
+            if (this.isCorsRestrictedEnvironment()) {
+                throw new Error(this.getCorsHelpMessage());
+            }
+
             const apiUrl = `${this.baseUrl}/services/aigc/multimodal-generation/generation`;
             console.log('DashScope API URL:', apiUrl);
             console.log('Request body:', JSON.stringify(requestBody, null, 2));
@@ -240,9 +287,14 @@ class DashScopeEngine {
             }
             
         } catch (error) {
-            if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            if (this.isCorsRestrictedEnvironment()) {
+                throw new Error(this.getCorsHelpMessage());
+            }
+
+            if (error && error.name === 'TypeError' && String(error.message || '').includes('fetch')) {
                 throw new Error('Network error: Unable to connect to DashScope API');
             }
+
             throw new Error(`DashScope synthesis failed: ${error.message}`);
         }
     }
@@ -463,7 +515,7 @@ class DashScopeEngine {
      * @returns {boolean} True if engine is available
      */
     isAvailable() {
-        return this.apiKey !== null && this.apiKey.length > 0;
+        return this.apiKey !== null && this.apiKey.length > 0 && !this.isCorsRestrictedEnvironment();
     }
     
     /**
