@@ -1661,37 +1661,29 @@ Scene Description: ${description}`;
                 chatInterface.style.backgroundColor = '#0a0a0a';
             }
             
-            // 更新选中状态
-            document.querySelectorAll('.bg-option').forEach(option => {
+            // 更新选中状态（不要用复杂 selector 拼接，直接匹配 onclick 内容更稳）
+            const bgOptions = Array.from(document.querySelectorAll('.bg-option'));
+            bgOptions.forEach(option => {
                 option.classList.remove('border-muse-rose', 'bg-muse-rose/20');
                 option.classList.add('border-white/10');
             });
-            
-            // 高亮当前选中的背景
-            const currentBgOption = document.querySelector(`[onclick*="${imageUrl}"]`);
-            if (currentBgOption) {
-                currentBgOption.classList.remove('border-white/10');
-                currentBgOption.classList.add('border-muse-rose', 'bg-muse-rose/20');
+
+            let selectedOption = null;
+            if (imageUrl) {
+                selectedOption = bgOptions.find(option => {
+                    const onclick = option.getAttribute('onclick') || '';
+                    return onclick.includes(imageUrl);
+                }) || null;
+            } else {
+                // 经典黑色（空URL）：默认高亮第一个选项
+                selectedOption = bgOptions[0] || null;
             }
-        }
-                option.classList.remove('border-muse-rose', 'bg-muse-rose/20');
-                option.classList.add('border-white/10');
-            });
-            
-            // 查找并高亮选中的选项
-            const selectedOption = document.querySelector(`[onclick*="${imageUrl.replace(/['"]/g, '\\$&')}"]`);
+
             if (selectedOption) {
                 selectedOption.classList.remove('border-white/10');
                 selectedOption.classList.add('border-muse-rose', 'bg-muse-rose/20');
-            } else if (!imageUrl) {
-                // 如果是经典黑色（空URL），高亮第一个选项
-                const firstOption = document.querySelector('.bg-option');
-                if (firstOption) {
-                    firstOption.classList.remove('border-white/10');
-                    firstOption.classList.add('border-muse-rose', 'bg-muse-rose/20');
-                }
             }
-            
+
             console.log(`已切换聊天背景: ${imageName || '经典黑色'}`);
         }
 
