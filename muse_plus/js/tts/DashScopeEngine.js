@@ -255,12 +255,23 @@ class DashScopeEngine {
     async playAudioFromUrl(audioUrl) {
         return new Promise((resolve, reject) => {
             console.log('Creating audio element for URL:', audioUrl);
-            const audio = new Audio(audioUrl);
             
-            // 添加更多事件监听器用于调试
+            // 停止当前播放的音频
+            this.stop();
+            
+            const audio = new Audio();
+            
+            // 设置音频属性
+            audio.crossOrigin = 'anonymous';
+            audio.preload = 'auto';
+            
+            // 设置音频源
+            audio.src = audioUrl;
+            this.currentAudio = audio;
+            
+            // 添加事件监听器
             audio.onloadstart = () => {
                 console.log('Audio loading started');
-                this.currentAudio = audio;
             };
             
             audio.onloadeddata = () => {
@@ -290,37 +301,63 @@ class DashScopeEngine {
                     src: audio.src
                 });
                 this.currentAudio = null;
-                reject(new Error(`Audio playback failed: ${audio.error ? audio.error.message : 'Unknown error'}`));
+                
+                // 提供更详细的错误信息
+                let errorMessage = 'Unknown audio error';
+                if (audio.error) {
+                    switch (audio.error.code) {
+                        case audio.error.MEDIA_ERR_ABORTED:
+                            errorMessage = 'Audio playback was aborted';
+                            break;
+                        case audio.error.MEDIA_ERR_NETWORK:
+                            errorMessage = 'Network error occurred while loading audio';
+                            break;
+                        case audio.error.MEDIA_ERR_DECODE:
+                            errorMessage = 'Audio decoding error';
+                            break;
+                        case audio.error.MEDIA_ERR_SRC_NOT_SUPPORTED:
+                            errorMessage = 'Audio format not supported';
+                            break;
+                        default:
+                            errorMessage = `Audio error code: ${audio.error.code}`;
+                    }
+                }
+                
+                reject(new Error(`Audio playback failed: ${errorMessage}`));
             };
             
-            // 尝试播放
-            console.log('Attempting to play audio...');
-            
-            // 检查浏览器自动播放策略
-            const playPromise = audio.play();
-            
-            if (playPromise !== undefined) {
-                playPromise
-                    .then(() => {
-                        console.log('Audio playback started successfully');
-                    })
-                    .catch(error => {
-                        console.error('Play promise rejected:', error);
-                        this.currentAudio = null;
-                        
-                        // 检查是否是自动播放策略问题
-                        if (error.name === 'NotAllowedError') {
-                            reject(new Error('浏览器阻止了自动播放，请先与页面交互后再试'));
-                        } else if (error.name === 'NotSupportedError') {
-                            reject(new Error('音频格式不支持'));
-                        } else {
-                            reject(new Error(`Audio play failed: ${error.message}`));
-                        }
-                    });
-            } else {
-                // 旧版浏览器，play() 不返回 Promise
-                console.log('Legacy browser, play() does not return Promise');
-            }
+            // 等待一小段时间确保音频元素准备就绪
+            setTimeout(() => {
+                // 尝试播放
+                console.log('Attempting to play audio...');
+                
+                const playPromise = audio.play();
+                
+                if (playPromise !== undefined) {
+                    playPromise
+                        .then(() => {
+                            console.log('Audio playback started successfully');
+                        })
+                        .catch(error => {
+                            console.error('Play promise rejected:', error);
+                            this.currentAudio = null;
+                            
+                            // 检查是否是自动播放策略问题
+                            if (error.name === 'NotAllowedError') {
+                                reject(new Error('浏览器阻止了自动播放，请先与页面交互后再试'));
+                            } else if (error.name === 'NotSupportedError') {
+                                reject(new Error('音频格式不支持'));
+                            } else if (error.name === 'AbortError') {
+                                reject(new Error('音频播放被中断'));
+                            } else {
+                                reject(new Error(`Audio play failed: ${error.message}`));
+                            }
+                        });
+                } else {
+                    // 旧版浏览器，play() 不返回 Promise
+                    console.log('Legacy browser, play() does not return Promise');
+                }
+            }, 100); // 等待100ms
         });
     }
     
@@ -394,9 +431,15 @@ class DashScopeEngine {
      */
     stop() {
         if (this.currentAudio) {
-            this.currentAudio.pause();
-            this.currentAudio.currentTime = 0;
-            this.currentAudio = null;
+            try {
+                this.currentAudio.pause();
+                this.currentAudio.currentTime = 0;
+                this.currentAudio.src = ''; // 清除音频源
+                this.currentAudio = null;
+            } catch (error) {
+                console.warn('停止音频时出错:', error);
+                this.currentAudio = null;
+            }
         }
         
         console.log('🛑 Audio playback stopped');

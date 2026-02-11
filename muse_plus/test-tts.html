@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>语音合成测试</title>
+    <style>
+        body { 
+            background: #000; 
+            color: #fff; 
+            font-family: Arial, sans-serif; 
+            padding: 20px; 
+            text-align: center;
+        }
+        .test-btn { 
+            background: #e11d48; 
+            color: white; 
+            border: none; 
+            padding: 15px 30px; 
+            margin: 10px; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            font-size: 16px;
+        }
+        .test-btn:hover { background: #be185d; }
+        .test-btn:disabled { background: #666; cursor: not-allowed; }
+        .status { 
+            margin: 20px 0; 
+            padding: 15px; 
+            background: #333; 
+            border-radius: 5px; 
+            min-height: 50px;
+        }
+        .success { background: #2d5a2d; }
+        .error { background: #5a2d2d; }
+    </style>
+</head>
+<body>
+    <h1>🔊 语音合成测试</h1>
+    <div id="status" class="status">点击下面的按钮测试语音功能</div>
+    
+    <div>
+        <button class="test-btn" onclick="testBasicTTS()">基础语音测试</button>
+        <button class="test-btn" onclick="testVoiceTypes()">音色测试</button>
+        <button class="test-btn" onclick="stopSpeech()">停止播放</button>
+    </div>
+    
+    <div>
+        <button class="test-btn" onclick="checkSupport()">检查浏览器支持</button>
+        <button class="test-btn" onclick="listVoices()">列出可用声音</button>
+    </div>
+    
+    <script>
+        const statusDiv = document.getElementById('status');
+        
+        function updateStatus(message, type = 'info') {
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+            console.log(`[TTS Test] ${message}`);
+        }
+        
+        function testBasicTTS() {
+            updateStatus('正在测试基础语音合成...');
+            
+            if (!window.speechSynthesis) {
+                updateStatus('❌ 浏览器不支持语音合成', 'error');
+                return;
+            }
+            
+            try {
+                const utterance = new SpeechSynthesisUtterance('你好，这是一个语音测试。');
+                utterance.lang = 'zh-CN';
+                utterance.rate = 0.9;
+                utterance.pitch = 1.0;
+                utterance.volume = 0.9;
+                
+                utterance.onstart = () => {
+                    updateStatus('✅ 语音播放开始', 'success');
+                };
+                
+                utterance.onend = () => {
+                    updateStatus('✅ 语音播放完成', 'success');
+                };
+                
+                utterance.onerror = (event) => {
+                    updateStatus(`❌ 语音播放错误: ${event.error}`, 'error');
+                };
+                
+                window.speechSynthesis.speak(utterance);
+                
+            } catch (error) {
+                updateStatus(`❌ 语音合成失败: ${error.message}`, 'error');
+            }
+        }
+        
+        function testVoiceTypes() {
+            updateStatus('正在测试不同音色...');
+            
+            const tests = [
+                { text: '过来，不用说话，听我就好。', pitch: 0.7, rate: 0.8, name: '低沉音' },
+                { text: '别离我太近，我怕控制不住。', pitch: 1.2, rate: 1.0, name: '清脆音' },
+                { text: '把手给我，慢慢来，没关系的。', pitch: 0.5, rate: 0.85, name: '温柔音' }
+            ];
+            
+            let currentTest = 0;
+            
+            function playNext() {
+                if (currentTest >= tests.length) {
+                    updateStatus('✅ 所有音色测试完成', 'success');
+                    return;
+                }
+                
+                const test = tests[currentTest];
+                updateStatus(`正在播放: ${test.name}`);
+                
+                const utterance = new SpeechSynthesisUtterance(test.text);
+                utterance.lang = 'zh-CN';
+                utterance.pitch = test.pitch;
+                utterance.rate = test.rate;
+                utterance.volume = 0.9;
+                
+                utterance.onend = () => {
+                    currentTest++;
+                    setTimeout(playNext, 500); // 间隔500ms播放下一个
+                };
+                
+                utterance.onerror = (event) => {
+                    updateStatus(`❌ ${test.name} 播放失败: ${event.error}`, 'error');
+                };
+                
+                window.speechSynthesis.speak(utterance);
+            }
+            
+            playNext();
+        }
+        
+        function stopSpeech() {
+            if (window.speechSynthesis) {
+                window.speechSynthesis.cancel();
+                updateStatus('🛑 语音播放已停止');
+            }
+        }
+        
+        function checkSupport() {
+            const support = {
+                speechSynthesis: !!window.speechSynthesis,
+                speechRecognition: !!(window.SpeechRecognition || window.webkitSpeechRecognition),
+                audioContext: !!(window.AudioContext || window.webkitAudioContext)
+            };
+            
+            let message = '浏览器支持情况:\n';
+            message += `• 语音合成: ${support.speechSynthesis ? '✅' : '❌'}\n`;
+            message += `• 语音识别: ${support.speechRecognition ? '✅' : '❌'}\n`;
+            message += `• 音频上下文: ${support.audioContext ? '✅' : '❌'}`;
+            
+            updateStatus(message);
+        }
+        
+        function listVoices() {
+            if (!window.speechSynthesis) {
+                updateStatus('❌ 浏览器不支持语音合成', 'error');
+                return;
+            }
+            
+            const voices = window.speechSynthesis.getVoices();
+            
+            if (voices.length === 0) {
+                updateStatus('正在加载语音列表，请稍后再试...');
+                // 有些浏览器需要时间加载语音列表
+                setTimeout(listVoices, 1000);
+                return;
+            }
+            
+            const chineseVoices = voices.filter(voice => 
+                voice.lang.includes('zh') || voice.lang.includes('CN')
+            );
+            
+            let message = `找到 ${voices.length} 个语音，其中 ${chineseVoices.length} 个中文语音:\n`;
+            chineseVoices.forEach((voice, index) => {
+                message += `${index + 1}. ${voice.name} (${voice.lang})\n`;
+            });
+            
+            if (chineseVoices.length === 0) {
+                message += '\n⚠️ 未找到中文语音，将使用默认语音';
+            }
+            
+            updateStatus(message);
+        }
+        
+        // 页面加载时检查支持情况
+        window.onload = () => {
+            checkSupport();
+            
+            // 监听语音列表加载完成
+            if (window.speechSynthesis) {
+                window.speechSynthesis.onvoiceschanged = () => {
+                    console.log('语音列表已加载');
+                };
+            }
+        };
+    </script>
+</body>
+</html>

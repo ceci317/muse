@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>背景图片测试 - Muse Plus</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #0a0a0a;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .preview {
+            width: 100%;
+            height: 300px;
+            border: 2px solid #333;
+            margin: 10px 0;
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        .preview-label {
+            background: rgba(0,0,0,0.7);
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .status {
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        .found { background: #22c55e; }
+        .missing { background: #ef4444; }
+        .instructions {
+            background: #1a1a1a;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .btn {
+            background: #e11d48;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover {
+            background: #be185d;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🎨 Muse Plus 背景图片测试</h1>
+        
+        <div class="instructions">
+            <h3>📋 使用说明</h3>
+            <p>1. 将你的5张浪漫图片重命名为 bg1.jpg, bg2.jpg, bg3.jpg, bg4.jpg, bg5.jpg</p>
+            <p>2. 放入 <code>images/backgrounds/</code> 目录</p>
+            <p>3. 点击下方的"刷新检查"按钮查看状态</p>
+            <p>4. 所有图片就位后，访问主页面查看轮播效果</p>
+        </div>
+
+        <button class="btn" onclick="checkImages()">🔄 刷新检查</button>
+        <button class="btn" onclick="window.open('/', '_blank')">🚀 打开主页面</button>
+        <button class="btn" onclick="window.open('images/backgrounds/generate-samples.html', '_blank')">🎨 生成示例图片</button>
+
+        <h3>📸 图片预览</h3>
+        <div id="image-list">
+            <!-- 图片预览将在这里显示 -->
+        </div>
+
+        <div class="instructions">
+            <h3>💡 提示</h3>
+            <ul>
+                <li>支持 JPG 和 PNG 格式</li>
+                <li>建议尺寸：1920x1080 或更高</li>
+                <li>如果图片无法加载，主页面会显示美丽的渐变背景</li>
+                <li>图片切换间隔已设置为4秒，过渡动画2-3秒</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const imageFiles = [
+            { name: 'bg1.jpg', label: '第一张浪漫图片' },
+            { name: 'bg2.jpg', label: '第二张浪漫图片' },
+            { name: 'bg3.jpg', label: '第三张浪漫图片' },
+            { name: 'bg4.jpg', label: '第四张浪漫图片' },
+            { name: 'bg5.jpg', label: '第五张浪漫图片' }
+        ];
+
+        function checkImages() {
+            const container = document.getElementById('image-list');
+            container.innerHTML = '';
+
+            imageFiles.forEach((file, index) => {
+                const div = document.createElement('div');
+                div.className = 'preview';
+                div.innerHTML = `<div class="preview-label">${file.label} (${file.name}) <span id="status-${index}" class="status">检查中...</span></div>`;
+                container.appendChild(div);
+
+                // 尝试加载图片
+                const img = new Image();
+                img.onload = () => {
+                    div.style.backgroundImage = `url(images/backgrounds/${file.name})`;
+                    document.getElementById(`status-${index}`).textContent = '✅ 已找到';
+                    document.getElementById(`status-${index}`).className = 'status found';
+                };
+                img.onerror = () => {
+                    div.style.background = 'linear-gradient(135deg, #1a1a2e, #16213e, #e94560)';
+                    document.getElementById(`status-${index}`).textContent = '❌ 缺失';
+                    document.getElementById(`status-${index}`).className = 'status missing';
+                };
+                img.src = `images/backgrounds/${file.name}?t=${Date.now()}`;
+            });
+        }
+
+        // 页面加载时自动检查
+        window.onload = checkImages;
+    </script>
+</body>
+</html>
