@@ -888,23 +888,39 @@
             btnIcon.className = "fa-solid fa-circle-notch fa-spin";
             
             try {
-                // 首先尝试WebSpeech（更可靠）
-                debugLog('优先使用WebSpeech进行语音试听');
-                speakTextFallback(text, type);
+                const service = await initTTSService();
+                debugLog(`使用引擎: ${service.getCurrentEngine().id}`);
+                debugLog(`合成文本: "${text}"`);
+                debugLog(`音色类型: ${type}`);
                 
-                // 延迟恢复按钮状态
-                setTimeout(() => {
-                    btnIcon.className = originalClass;
-                }, 1000);
+                // 获取当前配置
+                const options = { 
+                    voice: type
+                };
+                debugLog(`试听选项:`, 'info', options);
                 
-                debugLog('语音样本播放成功（WebSpeech）');
-                
+                await service.synthesize(text, options);
+                btnIcon.className = originalClass;
+                debugLog('语音样本播放成功');
             } catch (error) {
                 debugLog('语音样本播放失败', 'error', error);
                 btnIcon.className = originalClass;
                 
-                console.warn(`语音试听失败: ${error.message}`);
-                alert(`语音试听失败: ${error.message}\n\n请检查：\n1. 浏览器是否支持语音合成\n2. 系统音量是否开启\n3. 是否允许网站播放音频`);
+                // 显示详细错误信息
+                let errorMessage = error.message;
+                if (error.message.includes('Network error')) {
+                    errorMessage = '网络连接失败，请检查网络连接';
+                } else if (error.message.includes('Invalid API key')) {
+                    errorMessage = 'API 密钥无效，请检查密钥配置';
+                } else if (error.message.includes('401')) {
+                    errorMessage = 'API 密钥认证失败';
+                } else if (error.message.includes('403')) {
+                    errorMessage = 'API 密钥权限不足';
+                } else if (error.message.includes('429')) {
+                    errorMessage = 'API 调用频率限制，请稍后再试';
+                }
+                
+                alert(`语音试听失败: ${errorMessage}\n\n详细错误: ${error.message}`);
             }
         }
         
@@ -919,14 +935,39 @@
             }
             
             try {
-                // 优先使用WebSpeech（更可靠）
-                debugLog('使用WebSpeech进行语音合成');
-                speakTextFallback(text, type);
-                debugLog('语音合成成功（WebSpeech）');
+                const service = await initTTSService();
+                debugLog(`使用引擎: ${service.getCurrentEngine().id}`);
                 
+                // 获取当前配置
+                const config = service.getConfiguration();
+                debugLog(`当前配置:`, 'info', {
+                    voice: config.voice,
+                    engine: config.engine
+                });
+                
+                // 合成选项
+                const options = { 
+                    voice: type
+                };
+                debugLog(`合成选项:`, 'info', options);
+                
+                await service.synthesize(text, options);
+                debugLog('语音合成成功');
             } catch (error) {
                 debugLog('语音合成失败', 'error', error);
-                console.warn('语音播放失败：', error.message);
+                
+                // 显示用户友好的错误提示
+                if (error.message.includes('API key')) {
+                    console.warn('语音播放失败：API密钥问题，请检查设置');
+                } else if (error.message.includes('Network')) {
+                    console.warn('语音播放失败：网络连接问题');
+                } else {
+                    console.warn('语音播放失败：', error.message);
+                }
+                
+                // 尝试使用后备方案
+                debugLog('尝试使用 WebSpeech 后备方案');
+                speakTextFallback(text, type);
             }
         }
 
