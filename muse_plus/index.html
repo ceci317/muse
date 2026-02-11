@@ -155,10 +155,16 @@
             backdrop-filter: blur(1px);
         }
         
-        /* 确保聊天界面元素正确显示 */
-        #chat-interface > * {
+        /* 确保聊天界面元素正确显示（避免影响弹层定位） */
+        #chat-interface > *:not(#settings-popover):not(.chat-bg-overlay) {
             position: relative;
             z-index: 10;
+        }
+
+        /* 设置弹层需要脱离文档流，覆盖在聊天界面之上 */
+        #settings-popover {
+            position: absolute;
+            z-index: 70;
         }
         
         #chat-interface .chat-bg-overlay {
@@ -314,7 +320,7 @@
                         <div><h3 class="font-serif text-base text-white" id="chat-title">Story Title</h3></div>
                     </div>
                     <div class="flex items-center gap-2">
-                        <button onclick="toggleSettings()" class="text-[10px] text-muse-gold/80 border border-white/10 hover:border-muse-rose rounded-full px-3 py-1.5 transition flex items-center gap-2 bg-white/5"><i class="fa-solid fa-sliders"></i> <span id="current-persona-label">Default</span></button>
+                        <button id="settings-btn" onclick="toggleSettings()" class="text-[10px] text-muse-gold/80 border border-white/10 hover:border-muse-rose rounded-full px-3 py-1.5 transition flex items-center gap-2 bg-white/5"><i class="fa-solid fa-sliders"></i> <span id="current-persona-label">Default</span></button>
                         <button onclick="toggleVoiceOutput()" id="tts-toggle" class="text-[10px] text-muse-rose border border-muse-rose hover:text-muse-rose rounded-full px-2.5 py-1.5 transition bg-white/5"><i class="fa-solid fa-volume-high"></i></button>
                     </div>
                 </div>
@@ -364,35 +370,27 @@
                         <div>
                             <label class="text-[10px] text-stone-400 block mb-2">Chat Background</label>
                             <div class="grid grid-cols-3 gap-2">
-                                <div onclick="selectChatBackground('', '经典黑色')" class="bg-option cursor-pointer border border-white/10 rounded p-1 hover:border-muse-rose/50 transition">
+                                <div data-bg="" onclick="selectChatBackground('', '经典黑色')" class="bg-option cursor-pointer border border-white/10 rounded p-1 hover:border-muse-rose/50 transition">
                                     <div class="w-full h-12 bg-muse-black rounded flex items-center justify-center">
                                         <i class="fa-solid fa-moon text-muse-dim text-xs"></i>
                                     </div>
                                     <div class="text-[8px] text-stone-400 text-center mt-1">经典</div>
                                 </div>
-                                <div onclick="selectChatBackground('https://picsum.photos/1920/1080?random=10&blur=2', '暧昧灯光')" class="bg-option cursor-pointer border border-white/10 rounded p-1 hover:border-muse-rose/50 transition">
-                                    <div class="w-full h-12 bg-gradient-to-br from-orange-900 to-red-900 rounded flex items-center justify-center">
-                                        <i class="fa-solid fa-lightbulb text-orange-300 text-xs"></i>
-                                    </div>
-                                    <div class="text-[8px] text-stone-400 text-center mt-1">暧昧</div>
+                                <div data-bg="images/backgrounds/1.png" onclick="selectChatBackground('images/backgrounds/1.png', '背景 1')" class="bg-option cursor-pointer border border-white/10 rounded p-1 hover:border-muse-rose/50 transition">
+                                    <div class="w-full h-12 rounded bg-center bg-cover" style="background-image: url('images/backgrounds/1.png');"></div>
+                                    <div class="text-[8px] text-stone-400 text-center mt-1">背景1</div>
                                 </div>
-                                <div onclick="selectChatBackground('https://picsum.photos/1920/1080?random=11&blur=2', '温柔夜色')" class="bg-option cursor-pointer border border-white/10 rounded p-1 hover:border-muse-rose/50 transition">
-                                    <div class="w-full h-12 bg-gradient-to-br from-blue-900 to-purple-900 rounded flex items-center justify-center">
-                                        <i class="fa-solid fa-moon text-blue-300 text-xs"></i>
-                                    </div>
-                                    <div class="text-[8px] text-stone-400 text-center mt-1">温柔</div>
+                                <div data-bg="images/backgrounds/2.png" onclick="selectChatBackground('images/backgrounds/2.png', '背景 2')" class="bg-option cursor-pointer border border-white/10 rounded p-1 hover:border-muse-rose/50 transition">
+                                    <div class="w-full h-12 rounded bg-center bg-cover" style="background-image: url('images/backgrounds/2.png');"></div>
+                                    <div class="text-[8px] text-stone-400 text-center mt-1">背景2</div>
                                 </div>
-                                <div onclick="selectChatBackground('https://picsum.photos/1920/1080?random=12&blur=2', '私密空间')" class="bg-option cursor-pointer border border-white/10 rounded p-1 hover:border-muse-rose/50 transition">
-                                    <div class="w-full h-12 bg-gradient-to-br from-purple-900 to-pink-900 rounded flex items-center justify-center">
-                                        <i class="fa-solid fa-heart text-pink-300 text-xs"></i>
-                                    </div>
-                                    <div class="text-[8px] text-stone-400 text-center mt-1">私密</div>
+                                <div data-bg="images/backgrounds/3.png" onclick="selectChatBackground('images/backgrounds/3.png', '背景 3')" class="bg-option cursor-pointer border border-white/10 rounded p-1 hover:border-muse-rose/50 transition">
+                                    <div class="w-full h-12 rounded bg-center bg-cover" style="background-image: url('images/backgrounds/3.png');"></div>
+                                    <div class="text-[8px] text-stone-400 text-center mt-1">背景3</div>
                                 </div>
-                                <div onclick="selectChatBackground('https://picsum.photos/1920/1080?random=13&blur=2', '朦胧氛围')" class="bg-option cursor-pointer border border-white/10 rounded p-1 hover:border-muse-rose/50 transition">
-                                    <div class="w-full h-12 bg-gradient-to-br from-gray-800 to-gray-600 rounded flex items-center justify-center">
-                                        <i class="fa-solid fa-cloud text-gray-300 text-xs"></i>
-                                    </div>
-                                    <div class="text-[8px] text-stone-400 text-center mt-1">朦胧</div>
+                                <div data-bg="images/backgrounds/4.png" onclick="selectChatBackground('images/backgrounds/4.png', '背景 4')" class="bg-option cursor-pointer border border-white/10 rounded p-1 hover:border-muse-rose/50 transition">
+                                    <div class="w-full h-12 rounded bg-center bg-cover" style="background-image: url('images/backgrounds/4.png');"></div>
+                                    <div class="text-[8px] text-stone-400 text-center mt-1">背景4</div>
                                 </div>
                             </div>
                         </div>
@@ -1098,6 +1096,9 @@
             pop.classList.toggle('hidden');
             
             if (!pop.classList.contains('hidden')) {
+                // 将弹层定位到按钮下方，并自动避免越界
+                requestAnimationFrame(() => positionSettingsPopover());
+
                 // 恢复语音选择状态
                 const savedVoice = localStorage.getItem('muse_voice_type') || 'yushao';
                 const activeCard = document.querySelector(`.voice-card[onclick*="'${savedVoice}'"]`);
@@ -1111,19 +1112,60 @@
                 });
                 
                 // 高亮当前选中的背景
-                const currentBgOption = document.querySelector(`[onclick*="${savedBackground}"]`);
+                const currentBgOption = Array.from(document.querySelectorAll('.bg-option'))
+                    .find(el => (el.getAttribute('data-bg') || '') === savedBackground) || null;
                 if (currentBgOption) {
                     currentBgOption.classList.remove('border-white/10');
                     currentBgOption.classList.add('border-muse-rose', 'bg-muse-rose/20');
                 }
             }
         }
+
+        function positionSettingsPopover() {
+            const pop = document.getElementById('settings-popover');
+            const btn = document.getElementById('settings-btn');
+            if (!pop || !btn) return;
+            if (pop.classList.contains('hidden')) return;
+
+            const padding = 8;
+            const rect = btn.getBoundingClientRect();
+
+            // 用 fixed 避免父级定位/滚动导致偏移
+            pop.style.position = 'fixed';
+
+            // 先让它参与布局，读取尺寸
+            const popRect = pop.getBoundingClientRect();
+            const width = popRect.width || 288; // w-72 fallback
+            const height = popRect.height || 0;
+
+            // 默认：右对齐按钮，出现在按钮下方
+            let left = rect.right - width;
+            let top = rect.bottom + padding;
+
+            // 边界修正
+            left = Math.max(padding, Math.min(left, window.innerWidth - width - padding));
+
+            // 如果底部放不下，尝试放到按钮上方
+            const maxBottom = window.innerHeight - padding;
+            if (height > 0 && top + height > maxBottom) {
+                const candidateTop = rect.top - height - padding;
+                if (candidateTop >= padding) top = candidateTop;
+            }
+            top = Math.max(padding, Math.min(top, maxBottom - (height || 0)));
+
+            pop.style.left = `${left}px`;
+            pop.style.top = `${top}px`;
+        }
+
+        window.addEventListener('resize', () => positionSettingsPopover());
+        window.addEventListener('scroll', () => positionSettingsPopover(), true);
         
         function updateLiveSettings() {
             userProfile.orientation = document.getElementById('setting-gender').value;
             userProfile.atmosphere = document.getElementById('setting-vibe').value;
             currentVoice = localStorage.getItem('muse_voice_type') || 'yushao';
-            document.getElementById('current-persona-label').innerText = `${userProfile.orientation} / ${currentVoice}`;
+            // 聊天页面按钮文案：按需求将“masuline/masculine”显示改为“setting”
+            document.getElementById('current-persona-label').innerText = 'setting';
         }
 
         let storyContext = "";
@@ -1573,31 +1615,11 @@ Scene Description: ${description}`;
 
         // ========== 5. Background Image Selection ==========
         const chatBackgroundImages = [
-            {
-                name: '经典黑色',
-                url: '',
-                preview: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjMGEwYTBhIi8+Cjwvc3ZnPgo='
-            },
-            {
-                name: '暧昧灯光',
-                url: 'https://picsum.photos/1920/1080?random=10&blur=2',
-                preview: 'https://picsum.photos/100/80?random=10&blur=1'
-            },
-            {
-                name: '温柔夜色',
-                url: 'https://picsum.photos/1920/1080?random=11&blur=2',
-                preview: 'https://picsum.photos/100/80?random=11&blur=1'
-            },
-            {
-                name: '私密空间',
-                url: 'https://picsum.photos/1920/1080?random=12&blur=2',
-                preview: 'https://picsum.photos/100/80?random=12&blur=1'
-            },
-            {
-                name: '朦胧氛围',
-                url: 'https://picsum.photos/1920/1080?random=13&blur=2',
-                preview: 'https://picsum.photos/100/80?random=13&blur=1'
-            }
+            { name: '经典黑色', url: '', preview: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjMGEwYTBhIi8+Cjwvc3ZnPgo=' },
+            { name: '背景 1', url: 'images/backgrounds/1.png', preview: 'images/backgrounds/1.png' },
+            { name: '背景 2', url: 'images/backgrounds/2.png', preview: 'images/backgrounds/2.png' },
+            { name: '背景 3', url: 'images/backgrounds/3.png', preview: 'images/backgrounds/3.png' },
+            { name: '背景 4', url: 'images/backgrounds/4.png', preview: 'images/backgrounds/4.png' }
         ];
 
         let currentChatBackground = '';
@@ -1625,12 +1647,14 @@ Scene Description: ${description}`;
                 const img = new Image();
                 img.onload = () => {
                     console.log('聊天背景图片加载成功:', imageUrl);
-                    // 设置背景图片
+                    // 设置背景图片：优先完整展示（避免 cover 裁切只显示局部）
                     chatInterface.style.backgroundImage = `url(${imageUrl})`;
-                    chatInterface.style.backgroundSize = 'cover';
-                    chatInterface.style.backgroundPosition = 'center';
+                    chatInterface.style.backgroundColor = '#0a0a0a';
+                    chatInterface.style.backgroundSize = 'contain';
+                    chatInterface.style.backgroundPosition = 'center center';
                     chatInterface.style.backgroundRepeat = 'no-repeat';
-                    chatInterface.style.backgroundAttachment = 'fixed';
+                    // iOS/Safari 下 fixed 容易出现错位/裁切问题
+                    chatInterface.style.backgroundAttachment = 'scroll';
                     
                     // 添加新的遮罩层以确保文字可读性
                     const overlay = document.createElement('div');
@@ -1653,14 +1677,19 @@ Scene Description: ${description}`;
                     // 将遮罩层插入到第一个位置
                     chatInterface.insertBefore(overlay, chatInterface.firstChild);
                     
-                    // 确保关键元素在遮罩层之上，但不影响其他元素
-                    const importantElements = chatInterface.querySelectorAll('.p-3, .p-4, #chat-history, #settings-popover');
+                    // 确保关键元素在遮罩层之上，但避免覆盖设置弹层的定位逻辑
+                    const importantElements = chatInterface.querySelectorAll('.p-3, .p-4, #chat-history');
                     importantElements.forEach(element => {
                         if (element.style) {
                             element.style.position = 'relative';
                             element.style.zIndex = '10';
                         }
                     });
+
+                    const settingsPopover = document.getElementById('settings-popover');
+                    if (settingsPopover && settingsPopover.style) {
+                        settingsPopover.style.zIndex = '70';
+                    }
                 };
                 
                 img.onerror = () => {
@@ -1682,7 +1711,7 @@ Scene Description: ${description}`;
                 chatInterface.style.backgroundColor = '#0a0a0a';
             }
             
-            // 更新选中状态（不要用复杂 selector 拼接，直接匹配 onclick 内容更稳）
+            // 更新选中状态
             const bgOptions = Array.from(document.querySelectorAll('.bg-option'));
             bgOptions.forEach(option => {
                 option.classList.remove('border-muse-rose', 'bg-muse-rose/20');
@@ -1690,15 +1719,8 @@ Scene Description: ${description}`;
             });
 
             let selectedOption = null;
-            if (imageUrl) {
-                selectedOption = bgOptions.find(option => {
-                    const onclick = option.getAttribute('onclick') || '';
-                    return onclick.includes(imageUrl);
-                }) || null;
-            } else {
-                // 经典黑色（空URL）：默认高亮第一个选项
-                selectedOption = bgOptions[0] || null;
-            }
+            selectedOption = bgOptions.find(option => (option.getAttribute('data-bg') || '') === (imageUrl || '')) || null;
+            if (!selectedOption && !imageUrl) selectedOption = bgOptions[0] || null;
 
             if (selectedOption) {
                 selectedOption.classList.remove('border-white/10');

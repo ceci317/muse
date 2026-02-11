@@ -31,7 +31,7 @@ build/
 
 # 用户上传的背景图片（保护隐私）
 images/backgrounds/*.jpg
-images/backgrounds/*.png
+# images/backgrounds/*.png
 images/backgrounds/*.jpeg
 images/backgrounds/*.gif
 images/backgrounds/*.webp
