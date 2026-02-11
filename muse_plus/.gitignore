@@ -39,3 +39,11 @@ images/backgrounds/*.webp
 # 但保留说明文件和工具
 !images/backgrounds/README.md
 !images/backgrounds/generate-samples.html
+
+# 允许首页使用的背景图片
+!images/backgrounds/bg1.jpg
+!images/backgrounds/bg2.png
+!images/backgrounds/bg3.png
+!images/backgrounds/bg4.png
+!images/backgrounds/bg5.png
+!images/backgrounds/bg6.png
