@@ -30,7 +30,7 @@
 推荐拆成两层：
 
 1. 前端：GitHub Pages / Vercel 静态部署
-2. API 代理：Render / Railway / Cloudflare Workers / 自己的轻量 Python 服务
+2. API 代理：Cloudflare Workers / 自己的轻量后端
 
 ## 2. 推荐架构
 
@@ -130,6 +130,9 @@ dashu
 - `backend/requirements.txt`
 - `backend/.env.example`
 - `backend/README.md`
+- `cloudflare/wrangler.toml`
+- `cloudflare/src/index.js`
+- `cloudflare/README.md`
 
 前端运行时配置文件：
 
@@ -142,3 +145,16 @@ window.MUSE_RUNTIME_CONFIG = {
     proxyBase: "https://your-backend.example.com"
 };
 ```
+
+## 9. 当前推荐
+
+当前更推荐的正式上线方案是：
+
+1. 前端继续放 GitHub Pages
+2. 代理切到 Cloudflare Workers
+
+这样做的好处：
+
+- 不需要 Render 绑卡
+- 很适合这种轻量 TTS 代理
+- 后面继续加 MiniMax 也方便

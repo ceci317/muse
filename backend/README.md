@@ -1,6 +1,14 @@
-# Muse Backend
+# Muse Backend (Legacy Python Option)
 
-这个后端用于给 `muse_plus` 提供正式代理能力，优先服务：
+这个目录保留了一个 Python 版本的代理实现。
+
+当前更推荐使用：
+
+- `cloudflare/` 里的 Cloudflare Workers 方案
+
+这个 Python 后端仍然可用，适合你以后想部署到自己的服务器或其他 Python 平台时参考。
+
+它主要提供：
 
 - DashScope TTS
 - 音频 URL 代理拉取
@@ -47,7 +55,7 @@ python app.py
 gunicorn -w 2 -b 0.0.0.0:$PORT app:app
 ```
 
-## Render 部署
+## Render 部署（可选旧方案）
 
 仓库根目录已经新增：
 
