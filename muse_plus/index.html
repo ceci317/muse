@@ -1063,7 +1063,25 @@
         let recognition;
         let isListening = false;
         let hasShownSpeechSupportAlert = false;
+        let shouldKeepListening = false;
+        let hasRecognitionResult = false;
+        let recognitionRestartAttempts = 0;
         const defaultStoryInputPlaceholder = '输入或点击麦克风说话...';
+        async function ensureMicrophonePermission() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return true;
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                stream.getTracks().forEach(track => track.stop());
+                return true;
+            } catch (error) {
+                if (error && (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError')) {
+                    alert('浏览器没有拿到麦克风权限。请点击地址栏附近的麦克风权限并允许访问，然后再试一次。');
+                } else {
+                    alert('当前设备暂时无法打开麦克风。请确认系统麦克风可用后再试。');
+                }
+                return false;
+            }
+        }
         function initRecognition() {
             if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
                 recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
@@ -1076,21 +1094,40 @@
                     document.getElementById('mic-btn').classList.add('text-muse-rose', 'border-muse-rose');
                 };
                 recognition.onend = () => {
+                    if (shouldKeepListening && !hasRecognitionResult && recognitionRestartAttempts < 2) {
+                        recognitionRestartAttempts += 1;
+                        setTimeout(() => {
+                            try {
+                                recognition.start();
+                            } catch (error) {
+                                isListening = false;
+                                shouldKeepListening = false;
+                                document.getElementById('story-input').placeholder = defaultStoryInputPlaceholder;
+                                document.getElementById('mic-btn').classList.remove('text-muse-rose', 'border-muse-rose');
+                            }
+                        }, 200);
+                        return;
+                    }
                     isListening = false;
+                    shouldKeepListening = false;
                     document.getElementById('story-input').placeholder = defaultStoryInputPlaceholder;
                     document.getElementById('mic-btn').classList.remove('text-muse-rose', 'border-muse-rose');
                 };
                 recognition.onerror = (event) => {
                     isListening = false;
+                    shouldKeepListening = false;
                     document.getElementById('story-input').placeholder = defaultStoryInputPlaceholder;
                     document.getElementById('mic-btn').classList.remove('text-muse-rose', 'border-muse-rose');
                     if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
                         alert('浏览器没有拿到麦克风权限。请先允许麦克风访问，再试一次。');
+                    } else if (event.error === 'audio-capture') {
+                        alert('浏览器没有找到可用的麦克风设备。请检查系统输入设备设置。');
                     } else if (event.error !== 'aborted') {
                         alert(`语音输入暂时不可用：${event.error}`);
                     }
                 };
                 recognition.onresult = (event) => {
+                    hasRecognitionResult = true;
                     const transcript = event.results[0][0].transcript.trim();
                     document.getElementById('story-input').value = transcript;
                     document.getElementById('story-input').focus();
@@ -1100,7 +1137,7 @@
                 };
             }
         }
-        function startListening() {
+        async function startListening() {
             if(!recognition) initRecognition();
             if(!recognition) {
                 if(!hasShownSpeechSupportAlert) {
@@ -1110,15 +1147,22 @@
                 return;
             }
             if(isListening) return;
+            const hasPermission = await ensureMicrophonePermission();
+            if (!hasPermission) return;
+            shouldKeepListening = true;
+            hasRecognitionResult = false;
+            recognitionRestartAttempts = 0;
             try {
                 recognition.start();
             } catch (error) {
                 if (error.name !== 'InvalidStateError') {
+                    shouldKeepListening = false;
                     alert(`语音输入启动失败：${error.message}`);
                 }
             }
         }
         function stopListening() {
+            shouldKeepListening = false;
             if(recognition && isListening) {
                 recognition.stop();
             }
