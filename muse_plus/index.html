@@ -402,7 +402,7 @@
                 <div id="chat-history" class="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar pb-4"></div>
                 <div class="p-4 bg-muse-black border-t border-white/5 pb-safe-bottom">
                     <div class="relative max-w-2xl mx-auto flex gap-2">
-                        <button id="mic-btn" onmousedown="startListening()" onmouseup="stopListening()" ontouchstart="startListening()" ontouchend="stopListening()" class="bg-white/5 hover:bg-white/10 text-muse-dim hover:text-muse-rose rounded-full w-12 h-12 flex items-center justify-center transition border border-white/10 shrink-0"><i class="fa-solid fa-microphone"></i></button>
+                        <button id="mic-btn" onmousedown="startListening()" onmouseup="stopListening()" onmouseleave="stopListening()" ontouchstart="startListening()" ontouchend="stopListening()" class="bg-white/5 hover:bg-white/10 text-muse-dim hover:text-muse-rose rounded-full w-12 h-12 flex items-center justify-center transition border border-white/10 shrink-0"><i class="fa-solid fa-microphone"></i></button>
                         <div class="flex-1 relative">
                             <input type="text" id="story-input" placeholder="输入或按住说话..." class="w-full h-12 bg-white/5 border border-white/10 rounded-full pl-6 pr-12 text-sm text-muse-gold focus:outline-none focus:border-muse-rose focus:bg-white/10 transition" onkeypress="if(event.key==='Enter') continueStory()">
                             <button onclick="continueStory()" class="absolute right-2 top-2 p-2 text-muse-dim hover:text-muse-rose transition bg-white/5 rounded-full hover:bg-white/10 w-8 h-8 flex items-center justify-center"><i class="fa-solid fa-paper-plane text-xs"></i></button>
@@ -1061,22 +1061,64 @@
         let voiceEnabled = true; // 默认启用语音
         
         let recognition;
+        let isListening = false;
+        let hasShownSpeechSupportAlert = false;
         function initRecognition() {
             if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
                 recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
                 recognition.lang = 'zh-CN';
                 recognition.continuous = false;
                 recognition.interimResults = false;
-                recognition.onstart = () => document.getElementById('mic-btn').classList.add('text-muse-rose', 'border-muse-rose');
-                recognition.onend = () => document.getElementById('mic-btn').classList.remove('text-muse-rose', 'border-muse-rose');
+                recognition.onstart = () => {
+                    isListening = true;
+                    document.getElementById('mic-btn').classList.add('text-muse-rose', 'border-muse-rose');
+                };
+                recognition.onend = () => {
+                    isListening = false;
+                    document.getElementById('mic-btn').classList.remove('text-muse-rose', 'border-muse-rose');
+                };
+                recognition.onerror = (event) => {
+                    isListening = false;
+                    document.getElementById('mic-btn').classList.remove('text-muse-rose', 'border-muse-rose');
+                    if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+                        alert('浏览器没有拿到麦克风权限。请先允许麦克风访问，再试一次。');
+                    } else if (event.error !== 'aborted') {
+                        alert(`语音输入暂时不可用：${event.error}`);
+                    }
+                };
                 recognition.onresult = (event) => {
-                    document.getElementById('story-input').value = event.results[0][0].transcript;
+                    const transcript = event.results[0][0].transcript.trim();
+                    document.getElementById('story-input').value = transcript;
                     document.getElementById('story-input').focus();
+                    if (transcript) {
+                        continueStory();
+                    }
                 };
             }
         }
-        function startListening() { if(recognition) recognition.start(); else initRecognition(); }
-        function stopListening() { if(recognition) recognition.stop(); }
+        function startListening() {
+            if(!recognition) initRecognition();
+            if(!recognition) {
+                if(!hasShownSpeechSupportAlert) {
+                    alert('当前浏览器不支持语音输入。你可以先用键盘输入，后面我也可以继续帮你优化兼容性。');
+                    hasShownSpeechSupportAlert = true;
+                }
+                return;
+            }
+            if(isListening) return;
+            try {
+                recognition.start();
+            } catch (error) {
+                if (error.name !== 'InvalidStateError') {
+                    alert(`语音输入启动失败：${error.message}`);
+                }
+            }
+        }
+        function stopListening() {
+            if(recognition && isListening) {
+                recognition.stop();
+            }
+        }
 
         function toggleVoiceOutput() {
             voiceEnabled = !voiceEnabled;
