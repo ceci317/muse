@@ -28,13 +28,21 @@ class TTSService {
             // Register available engines
             this.registerEngine('web-speech', new WebSpeechEngine());
             this.registerEngine('dashscope', new DashScopeEngine());
+            if (typeof MiniMaxEngine !== 'undefined') {
+                this.registerEngine('minimax', new MiniMaxEngine());
+            }
             
-            // Load DashScope API key if available
-            const apiKey = this.config.get('dashscopeApiKey');
-            if (apiKey) {
-                const dashscopeEngine = this.engines.get('dashscope');
-                if (dashscopeEngine) {
-                    dashscopeEngine.setApiKey(apiKey);
+            // Load provider API keys if available
+            const providerKeys = {
+                dashscope: this.config.get('dashscopeApiKey'),
+                minimax: this.config.get('minimaxApiKey')
+            };
+            for (const [provider, apiKey] of Object.entries(providerKeys)) {
+                if (apiKey) {
+                    const engine = this.engines.get(provider);
+                    if (engine && typeof engine.setApiKey === 'function') {
+                        engine.setApiKey(apiKey);
+                    }
                 }
             }
             
@@ -236,29 +244,42 @@ class TTSService {
      * @returns {Promise<{success: boolean, error?: string}>} Configuration result
      */
     async configureDashScopeApiKey(apiKey) {
-        const dashscopeEngine = this.engines.get('dashscope');
-        if (!dashscopeEngine) {
-            throw new Error('DashScope engine not available');
+        return await this.configureProviderApiKey('dashscope', apiKey);
+    }
+
+    /**
+     * Configure a provider API key.
+     * @param {string} provider - Provider id
+     * @param {string} apiKey - API key
+     * @returns {Promise<{success: boolean, error?: string}>} Configuration result
+     */
+    async configureProviderApiKey(provider, apiKey) {
+        const engine = this.engines.get(provider);
+        if (!engine) {
+            throw new Error(`${provider} engine not available`);
         }
-        
-        // Set the API key
-        dashscopeEngine.setApiKey(apiKey);
-        
-        // Validate the API key
-        const validation = await dashscopeEngine.validateApiKey();
-        
+
+        if (typeof engine.setApiKey === 'function') {
+            engine.setApiKey(apiKey);
+        }
+
+        const validation = typeof engine.validateApiKey === 'function'
+            ? await engine.validateApiKey()
+            : { isValid: true };
+
         if (validation.isValid) {
-            // Save to configuration
-            this.config.save('dashscopeApiKey', apiKey);
-            console.log('DashScope API key configured successfully');
+            this.config.save(`${provider}ApiKey`, apiKey);
+            console.log(`${provider} API key configured successfully`);
             return { success: true };
-        } else {
-            // Remove invalid key
-            dashscopeEngine.setApiKey(null);
-            const error = validation.error || 'Invalid DashScope API key';
-            console.warn('DashScope API key validation failed:', error);
-            return { success: false, error: error };
         }
+
+        if (typeof engine.setApiKey === 'function') {
+            engine.setApiKey(null);
+        }
+
+        const error = validation.error || `Invalid ${provider} API key`;
+        console.warn(`${provider} API key validation failed:`, error);
+        return { success: false, error };
     }
     
     /**
@@ -283,6 +304,17 @@ class TTSService {
             engineAvailable: dashscopeEngine ? dashscopeEngine.isAvailable() : false,
             formatValid: hasApiKey && dashscopeEngine ? 
                 dashscopeEngine.isValidApiKeyFormat(this.config.get('dashscopeApiKey')) : false
+        };
+    }
+
+    /**
+     * Get configured provider API keys status.
+     * @returns {Object} Provider key summary
+     */
+    getProviderKeyStatus() {
+        return {
+            dashscope: !!this.config.get('dashscopeApiKey'),
+            minimax: !!this.config.get('minimaxApiKey')
         };
     }
     

@@ -8,6 +8,7 @@ class TTSConfig {
             engine: 'web-speech',           // 当前选择的引擎
             voice: 'yushao',                // 当前选择的音色
             dashscopeApiKey: null,          // DashScope API密钥
+            minimaxApiKey: null,            // MiniMax API密钥
             fallbackEnabled: true,          // 是否启用自动降级
             volume: 50,                     // 音量设置
             speed: 1.0,                     // 语速设置
@@ -65,7 +66,7 @@ class TTSConfig {
      */
     save(key, value) {
         // Special handling for sensitive data like API keys
-        if (key === 'dashscopeApiKey') {
+        if (key === 'dashscopeApiKey' || key === 'minimaxApiKey') {
             this.data[key] = this.encodeApiKey(value);
         } else {
             this.data[key] = value;
@@ -85,7 +86,7 @@ class TTSConfig {
      */
     get(key) {
         // Special handling for sensitive data like API keys
-        if (key === 'dashscopeApiKey') {
+        if (key === 'dashscopeApiKey' || key === 'minimaxApiKey') {
             return this.decodeApiKey(this.data[key]);
         }
         return this.data[key];
@@ -107,6 +108,7 @@ class TTSConfig {
             engine: 'web-speech',
             voice: 'yushao',
             dashscopeApiKey: null,
+            minimaxApiKey: null,
             fallbackEnabled: true,
             volume: 50,
             speed: 1.0,
@@ -180,7 +182,7 @@ class TTSConfig {
         const errors = [];
         
         // Validate engine
-        if (!['web-speech', 'dashscope'].includes(this.data.engine)) {
+        if (!['web-speech', 'dashscope', 'minimax'].includes(this.data.engine)) {
             errors.push('Invalid engine type');
         }
         
@@ -192,6 +194,10 @@ class TTSConfig {
         // Validate DashScope API key if engine is dashscope
         if (this.data.engine === 'dashscope' && !this.data.dashscopeApiKey) {
             errors.push('DashScope API key is required');
+        }
+
+        if (this.data.engine === 'minimax' && !this.data.minimaxApiKey) {
+            errors.push('MiniMax API key is required');
         }
         
         // Validate volume

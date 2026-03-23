@@ -4,6 +4,12 @@
 
 ## ✨ 最新更新 (v2.0)
 
+### 🚀 部署与扩展准备
+- **已具备 GitHub Pages 静态部署工作流**
+- **本地代理已支持 DashScope 音频代理播放**
+- **TTS 架构已预留多 Provider 扩展位**
+- **后续可接入 MiniMax 等新语音服务**
+
 ### 🎨 全新背景图片系统
 - **本地图片支持**: 支持用户自定义背景图片
 - **快速轮播**: 图片切换速度从8秒优化为4秒
@@ -140,6 +146,7 @@ muse_plus/
 ├── start.sh                    # 启动脚本 (改进版)
 ├── stop.sh                     # 停止脚本
 ├── test.sh                     # 测试脚本
+├── DEPLOYMENT.md               # 部署与多 Provider 规划
 ├── add-images.sh               # 图片状态检查工具
 ├── create-sample-images.sh     # 示例图片生成工具
 ├── BACKGROUND_SETUP.md         # 背景图片设置指南
@@ -156,6 +163,7 @@ muse_plus/
     ├── TTSConfig.js           # 配置管理
     ├── DashScopeEngine.js     # DashScope TTS 引擎
     ├── WebSpeechEngine.js     # WebSpeech 引擎
+    ├── MiniMaxEngine.js       # MiniMax 扩展骨架
     └── TTSService.js          # TTS 服务管理
 ```
 
@@ -173,6 +181,13 @@ muse_plus/
 - **开发者工具**：按 `F12` 打开，在 Network 标签可以看到文件是否重新加载
 - **实时预览**：Python 的 `http.server` 会自动提供最新的文件内容
 - **API 密钥配置**：点击右上角的 "KEY" 按钮，切换到 "ALIYUN" 标签输入 DashScope API 密钥
+
+## 🧭 部署建议
+
+- 纯静态页面可直接走 GitHub Pages
+- DashScope / MiniMax 这类需要隐藏 API Key 或处理音频代理的功能，建议配一个轻量后端或边缘函数
+- 当前仓库已经有 `muse_plus/.github/workflows/deploy-pages.yml`，静态资源部署可以直接复用
+- 更完整的上线方案见 `DEPLOYMENT.md`
 
 ### 🎭 视觉效果调试
 - **图片预览**: 访问 `/test-images.html` 查看所有背景图片状态

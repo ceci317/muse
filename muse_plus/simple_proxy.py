@@ -15,6 +15,7 @@ import socketserver
 import json
 import sys
 from datetime import datetime
+from urllib.parse import urlparse, parse_qs, unquote
 
 PORT = 3001
 
@@ -25,6 +26,66 @@ class SimpleProxyHandler(http.server.BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_cors_headers()
         self.end_headers()
+
+    def do_GET(self):
+        """代理外部音频文件，避免浏览器直接加载跨域媒体失败"""
+        parsed_path = urlparse(self.path)
+        if parsed_path.path != '/proxy/audio':
+            self.send_error(404, "Not Found")
+            return
+
+        query = parse_qs(parsed_path.query)
+        raw_url = query.get('url', [None])[0]
+        if not raw_url:
+            self.send_error(400, "Missing url parameter")
+            return
+
+        target_url = unquote(raw_url)
+        parsed_target = urlparse(target_url)
+        allowed_hosts = (
+            'dashscope-result-',
+            'oss-cn-',
+            'aliyuncs.com',
+        )
+
+        if parsed_target.scheme not in ('http', 'https') or not any(token in parsed_target.netloc for token in allowed_hosts):
+            self.send_error(400, "Unsupported audio url")
+            return
+
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] Proxying audio: GET {target_url}")
+
+        try:
+            response = requests.get(
+                target_url,
+                verify=False,
+                timeout=30,
+                stream=True
+            )
+
+            self.send_response(response.status_code)
+            self.send_cors_headers()
+
+            content_type = response.headers.get('Content-Type', 'audio/wav')
+            self.send_header('Content-Type', content_type)
+            content_length = response.headers.get('Content-Length')
+            if content_length:
+                self.send_header('Content-Length', content_length)
+            self.end_headers()
+
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:
+                    self.wfile.write(chunk)
+                    self.wfile.flush()
+
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] Audio response: {response.status_code}")
+
+        except requests.exceptions.RequestException as e:
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] Audio proxy error: {str(e)}")
+            self.send_response(500)
+            self.send_cors_headers()
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(f'{{"error": "Audio proxy failed: {str(e)}"}}'.encode())
     
     def do_POST(self):
         """处理 POST 请求"""

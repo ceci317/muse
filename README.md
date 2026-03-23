@@ -1,112 +1,84 @@
-# Muse - Interactive Content Platform
+# Muse Repository Overview
 
-一个专为女性用户设计的互动内容平台，提供沉浸式的AI驱动体验。
+这个仓库目前同时包含两类内容：
 
-## ✨ 主要功能
+- `muse_plus/`：当前最完整、最推荐继续开发和部署的版本
+- 根目录的一组 `v*.html`、`musev*.html`、`index.html`：历史原型和阶段性实验文件
 
-### 🎭 互动故事
-- **私人电梯** - 密闭空间的紧张氛围
-- **禁忌图书馆** - 安静角落的秘密相遇  
-- **Trust (信任)** - 蒙眼体验的心理探索
+如果你的目标是最终收敛到 **Muse Plus**，建议把 `muse_plus/` 视为主项目，其余 HTML 文件视为设计资产或历史备份。
 
-### 🤖 AI 功能
-- **AI 剧本生成器** - 根据关键词生成个性化独白
-- **AI 伴侣** - 智能对话系统，提供情感陪伴
-- **Oracle 神谕** - AI 塔罗牌占卜，探索内心渴望
+## 当前建议
 
-### 🎵 声音体验
-- **多种声线选择**：
-  - 低沉御少音 🍷 (磁性、知性)
-  - 清冷少年音 ❄️ (禁欲、清脆)  
-  - 温柔大叔音 🥃 (包容、低沉)
-- **语音合成** - 将文本转换为自然语音
-- **背景音乐控制** - 营造沉浸式氛围
+- 开发主入口：`muse_plus/index.html`
+- 本地启动方式：在 `muse_plus/` 目录运行 `./start.sh`
+- GitHub Pages 部署源：`muse_plus/`
+- 根目录文件：保留作参考，不再作为主版本继续叠加功能
 
-### 🌈 个性化设置
-- **性别偏好切换** - 男性张力 / 女性柔美
-- **多元光谱设置** - GL、Femdom、Demisexual 等主题筛选
-- **响应式设计** - 适配各种设备尺寸
+## 仓库结构
 
-### 💌 社交功能
-- **树洞信箱 (Sanctuary)** - 匿名情感分享与拾取
-- **私人圈子** - 邀请制社区
-
-## 🚀 快速开始
-
-### 本地运行
-```bash
-# 克隆项目
-git clone https://github.com/ceci317/muse.git
-cd muse
-
-# 启动本地服务器
-python3 -m http.server 8000
-
-# 访问应用
-open http://localhost:8000/v3.html
-```
-
-### 在线体验
-直接访问：`https://ceci317.github.io/muse/v3.html`
-
-## 🔧 配置说明
-
-### API Key 设置
-应用使用 Google Gemini API 提供 AI 功能：
-1. 访问 [Google AI Studio](https://aistudio.google.com/app/apikey) 获取 API Key
-2. 在应用中点击 "API KEY" 按钮进行配置
-3. API Key 仅保存在本地浏览器，不会上传到服务器
-
-### 声音设置
-- 支持 Google Cloud Text-to-Speech API
-- 提供浏览器原生语音合成作为备选方案
-- 可在 "VOICE" 设置中试听和选择不同声线
-
-## 📱 技术栈
-
-- **前端**: HTML5, CSS3 (Tailwind CSS), Vanilla JavaScript
-- **AI 服务**: Google Gemini API
-- **语音合成**: Google Cloud TTS / Web Speech API
-- **图片资源**: Unsplash API
-- **音频资源**: Google Actions Audio Library
-- **Markdown 解析**: Marked.js
-
-## 🎨 设计理念
-
-Muse 致力于创造一个安全、优雅、充满想象力的数字空间，让用户能够：
-- 探索内心的情感和欲望
-- 体验高质量的AI互动内容
-- 享受个性化的感官体验
-- 在匿名环境中自由表达
-
-## 📄 文件结构
-
-```
+```text
 muse/
-├── v3.html          # 主应用文件
-├── index.html       # 早期版本
-├── musev2.html      # 第二版本
-├── design.md        # 设计文档
-├── requirement.md   # 需求文档
-├── task.md          # 任务列表
-└── README.md        # 项目说明
+├── muse_plus/                  # 当前主版本（建议继续维护这里）
+│   ├── index.html              # 主应用入口
+│   ├── js/tts/                 # TTS 核心模块
+│   ├── images/                 # 背景和展示图片
+│   ├── simple_proxy.py         # 本地 CORS 代理
+│   ├── start.sh                # 一键启动脚本
+│   ├── stop.sh                 # 停止脚本
+│   └── .github/workflows/      # GitHub Pages 部署配置
+├── index.html                  # 早期首页原型
+├── v1.html ~ v17.html          # 多轮历史页面版本
+├── musev2.html / musev4.html   # 历史阶段版本
+├── js/tts/                     # 根目录实验版 TTS 模块与测试
+├── test-*.html / verify-*.js   # 根目录测试页与验证脚本
+├── design.md                   # 设计说明
+├── requirement.md              # 需求说明
+└── PROJECT_STRUCTURE.md        # 更详细的仓库整理说明
 ```
 
-## 🔒 隐私与安全
+## Muse Plus 重点文件
 
-- 所有用户数据仅存储在本地浏览器
-- API Key 不会发送到第三方服务器
-- 匿名社交功能保护用户隐私
-- 内容过滤确保社区安全
+- `muse_plus/index.html`
+  当前主页面，包含 UI、交互逻辑、TTS 初始化和运行时状态管理。
+- `muse_plus/js/tts/TTSConfig.js`
+  TTS 配置管理。
+- `muse_plus/js/tts/DashScopeEngine.js`
+  DashScope 语音合成引擎。
+- `muse_plus/js/tts/WebSpeechEngine.js`
+  浏览器原生语音后备引擎。
+- `muse_plus/js/tts/TTSService.js`
+  统一调度不同 TTS 引擎的服务层。
+- `muse_plus/simple_proxy.py`
+  本地开发时绕过浏览器跨域限制，代理 DashScope 请求。
+- `muse_plus/start.sh`
+  启动代理和静态服务器的开发脚本。
+- `muse_plus/.github/workflows/deploy-pages.yml`
+  指向 `./muse_plus` 的 Pages 部署配置，说明部署目标已经是 Muse Plus。
 
-## 🤝 贡献指南
+## 历史文件如何看
 
-欢迎提交 Issue 和 Pull Request 来改进项目！
+- 根目录 `index.html`、`v1.html`、`v3.html`、`v4.html`、`v5.html`、`v6.html`、`v14.1.html`、`v17.html`
+  这些大多是不同阶段的单文件页面原型。
+- 根目录 `test-*.html`、`debug-*.html`、`verify-*.js`
+  主要是围绕 TTS、错误处理、图片和流式处理的测试工具。
+- 根目录 `js/tts/`
+  更像实验场或公共模块演化区，不是部署入口。
 
-## 📜 许可证
+## 快速开始
 
-MIT License - 详见 LICENSE 文件
+```bash
+git clone https://github.com/ceci317/muse.git
+cd muse/muse_plus
+./start.sh
+```
 
----
+启动后访问：
 
-*"戴上耳机，闭上眼睛，或者是看着光影流动。"*
+- `http://localhost:3000/`
+- `http://localhost:3000/debug-dashscope-tts.html`
+
+## 下一步收敛建议
+
+- 所有新功能只加到 `muse_plus/`
+- 根目录历史 HTML 停止继续分叉
+- 后续如果要进一步清仓，可以把历史文件移入 `archive/`，但建议先确认哪些页面仍需参考

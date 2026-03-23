@@ -227,7 +227,7 @@ class DashScopeEngine {
         const voiceConfig = this.voiceMap[options.voice] || this.voiceMap['shaonian'];
         
         const requestBody = {
-            model: 'qwen3-tts-flash-2025-11-27',
+            model: 'qwen3-tts-flash',
             input: {
                 text: text,
                 voice: voiceConfig.voice,
@@ -306,7 +306,8 @@ class DashScopeEngine {
      */
     async playAudioFromUrl(audioUrl) {
         return new Promise((resolve, reject) => {
-            console.log('Creating audio element for URL:', audioUrl);
+            const playableUrl = this.getPlayableAudioUrl(audioUrl);
+            console.log('Creating audio element for URL:', playableUrl);
             
             // 停止当前播放的音频
             this.stop();
@@ -314,11 +315,10 @@ class DashScopeEngine {
             const audio = new Audio();
             
             // 设置音频属性
-            audio.crossOrigin = 'anonymous';
             audio.preload = 'auto';
             
             // 设置音频源
-            audio.src = audioUrl;
+            audio.src = playableUrl;
             this.currentAudio = audio;
             
             // 添加事件监听器
@@ -412,6 +412,32 @@ class DashScopeEngine {
             }, 100); // 等待100ms
         });
     }
+
+    /**
+     * Route remote audio through the local proxy in development to avoid media loading issues.
+     * @param {string} audioUrl - Original audio URL
+     * @returns {string} Playable URL
+     */
+    getPlayableAudioUrl(audioUrl) {
+        if (!audioUrl || !this.isLocalProxyMode()) {
+            return audioUrl;
+        }
+
+        if (audioUrl.startsWith('blob:') || audioUrl.startsWith('data:')) {
+            return audioUrl;
+        }
+
+        try {
+            const parsed = new URL(audioUrl);
+            if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') {
+                return audioUrl;
+            }
+            return `http://localhost:3001/proxy/audio?url=${encodeURIComponent(audioUrl)}`;
+        } catch (error) {
+            console.warn('Failed to normalize audio URL, using original:', error);
+            return audioUrl;
+        }
+    }
     
     /**
      * Play audio from base64 data
@@ -448,9 +474,15 @@ class DashScopeEngine {
     base64ToBlob(base64Data) {
         try {
             let cleanBase64;
+            let mimeType = 'audio/mpeg';
             
             // 处理不同类型的 base64 数据
             if (typeof base64Data === 'string') {
+                const dataUrlMatch = base64Data.match(/^data:(audio\/[^;]+);base64,/);
+                if (dataUrlMatch) {
+                    mimeType = dataUrlMatch[1];
+                }
+
                 // 移除可能的 data URL 前缀
                 cleanBase64 = base64Data.replace(/^data:audio\/[^;]+;base64,/, '');
             } else if (Array.isArray(base64Data)) {
@@ -471,11 +503,57 @@ class DashScopeEngine {
             }
             
             const byteArray = new Uint8Array(byteNumbers);
-            return new Blob([byteArray], { type: 'audio/mpeg' });
+            if (mimeType === 'audio/mpeg') {
+                mimeType = this.detectAudioMimeType(byteArray);
+            }
+
+            console.log('Detected audio MIME type:', mimeType);
+            return new Blob([byteArray], { type: mimeType });
         } catch (error) {
             console.error('Base64 conversion error:', error);
             throw new Error(`Base64 conversion failed: ${error.message}`);
         }
+    }
+
+    /**
+     * Detect audio MIME type from magic bytes
+     * @param {Uint8Array} byteArray - Audio bytes
+     * @returns {string} MIME type
+     */
+    detectAudioMimeType(byteArray) {
+        if (!byteArray || byteArray.length < 4) {
+            return 'audio/mpeg';
+        }
+
+        // ID3 header or MP3 frame sync
+        if (
+            (byteArray[0] === 0x49 && byteArray[1] === 0x44 && byteArray[2] === 0x33) ||
+            (byteArray[0] === 0xff && (byteArray[1] & 0xe0) === 0xe0)
+        ) {
+            return 'audio/mpeg';
+        }
+
+        // WAV / RIFF
+        if (
+            byteArray[0] === 0x52 &&
+            byteArray[1] === 0x49 &&
+            byteArray[2] === 0x46 &&
+            byteArray[3] === 0x46
+        ) {
+            return 'audio/wav';
+        }
+
+        // OGG
+        if (
+            byteArray[0] === 0x4f &&
+            byteArray[1] === 0x67 &&
+            byteArray[2] === 0x67 &&
+            byteArray[3] === 0x53
+        ) {
+            return 'audio/ogg';
+        }
+
+        return 'audio/mpeg';
     }
     
     /**

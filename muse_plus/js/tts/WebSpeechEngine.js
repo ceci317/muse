@@ -31,6 +31,7 @@ class WebSpeechEngine {
         
         this.isInitialized = false;
         this.currentUtterance = null;
+        this.availableBrowserVoices = [];
     }
     
     /**
@@ -49,6 +50,7 @@ class WebSpeechEngine {
             const checkVoices = () => {
                 const voices = window.speechSynthesis.getVoices();
                 if (voices.length > 0) {
+                    this.availableBrowserVoices = voices;
                     this.isInitialized = true;
                     resolve();
                 } else {
@@ -91,12 +93,16 @@ class WebSpeechEngine {
             try {
                 const utterance = new SpeechSynthesisUtterance(text);
                 const voiceConfig = this.voiceMap[options.voice] || this.voiceMap['yushao'];
+                const browserVoice = this.findBestBrowserVoice(options.voice, utterance.lang);
                 
                 // Configure utterance
                 utterance.lang = options.language || 'zh-CN';
                 utterance.pitch = voiceConfig.pitch;
                 utterance.rate = voiceConfig.rate * (options.speed || 1.0);
                 utterance.volume = (options.volume || 50) / 100;
+                if (browserVoice) {
+                    utterance.voice = browserVoice;
+                }
                 
                 // Set up event handlers
                 utterance.onend = () => {
@@ -133,6 +139,44 @@ class WebSpeechEngine {
             window.speechSynthesis.cancel();
         }
         this.currentUtterance = null;
+    }
+
+    /**
+     * Pick a browser voice that better matches the selected persona.
+     * @param {string} voiceType - Internal voice id
+     * @param {string} lang - Preferred language
+     * @returns {SpeechSynthesisVoice|null} Best voice match
+     */
+    findBestBrowserVoice(voiceType, lang) {
+        const voices = this.availableBrowserVoices.length > 0
+            ? this.availableBrowserVoices
+            : (window.speechSynthesis ? window.speechSynthesis.getVoices() : []);
+
+        if (!voices || voices.length === 0) {
+            return null;
+        }
+
+        const normalizedLang = (lang || 'zh-CN').toLowerCase();
+        const sameLangVoices = voices.filter(voice => (voice.lang || '').toLowerCase().startsWith(normalizedLang.split('-')[0]));
+        const candidates = sameLangVoices.length > 0 ? sameLangVoices : voices;
+
+        const maleHints = ['male', 'man', 'boy', 'george', 'daniel', 'alex', 'fred', 'kai', 'yunxi', 'yunyang'];
+        const femaleHints = ['female', 'woman', 'girl', 'victoria', 'samantha', 'tingting'];
+
+        const pickByHints = (hints) => candidates.find(voice => {
+            const haystack = `${voice.name} ${voice.voiceURI}`.toLowerCase();
+            return hints.some(hint => haystack.includes(hint));
+        });
+
+        if (voiceType === 'yushao' || voiceType === 'dashu') {
+            return pickByHints(maleHints) || candidates[0] || null;
+        }
+
+        if (voiceType === 'shaonian') {
+            return pickByHints(maleHints) || pickByHints(femaleHints) || candidates[0] || null;
+        }
+
+        return candidates[0] || null;
     }
     
     /**
