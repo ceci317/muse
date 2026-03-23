@@ -440,12 +440,12 @@
         </div>
     </div>
 
-    <script src="js/runtime-config.js?v=20260323e"></script>
-    <script src="js/tts/TTSConfig.js?v=20260323e"></script>
-    <script src="js/tts/DashScopeEngine.js?v=20260323e"></script>
-    <script src="js/tts/WebSpeechEngine.js?v=20260323e"></script>
-    <script src="js/tts/MiniMaxEngine.js?v=20260323e"></script>
-    <script src="js/tts/TTSService.js?v=20260323e"></script>
+    <script src="js/runtime-config.js?v=20260323f"></script>
+    <script src="js/tts/TTSConfig.js?v=20260323f"></script>
+    <script src="js/tts/DashScopeEngine.js?v=20260323f"></script>
+    <script src="js/tts/WebSpeechEngine.js?v=20260323f"></script>
+    <script src="js/tts/MiniMaxEngine.js?v=20260323f"></script>
+    <script src="js/tts/TTSService.js?v=20260323f"></script>
     <script>
         // ========== 1. 优化的图片轮播系统 ==========
         const backgroundImages = [
@@ -816,6 +816,16 @@
         let ttsService = null;
         let debugMode = localStorage.getItem('muse_debug_mode') === 'true';
         const isGitHubPages = window.location.hostname.endsWith('github.io');
+
+        function hasConfiguredRemoteProxy() {
+            const runtimeProxy = window.MUSE_RUNTIME_CONFIG && window.MUSE_RUNTIME_CONFIG.proxyBase
+                ? String(window.MUSE_RUNTIME_CONFIG.proxyBase).trim()
+                : '';
+            const storedProxy = localStorage.getItem('muse_proxy_base')
+                ? String(localStorage.getItem('muse_proxy_base')).trim()
+                : '';
+            return Boolean(runtimeProxy || storedProxy);
+        }
         
         // 调试日志函数
         function debugLog(message, type = 'info', data = null) {
@@ -849,8 +859,8 @@
                 try {
                     ttsService = new TTSService();
 
-                    // GitHub Pages 等静态站点无法使用本地代理，DashScope TTS 常会被浏览器 CORS 拦截
-                    if (isGitHubPages) {
+                    // GitHub Pages 只有在未配置远程代理时才强制降级到浏览器语音
+                    if (isGitHubPages && !hasConfiguredRemoteProxy()) {
                         console.warn('检测到 GitHub Pages 环境：DashScope TTS 将自动降级为 Web Speech API（无需后端）');
                         debugLog('检测到 GitHub Pages 环境，强制使用 WebSpeech 引擎', 'warn');
                         await ttsService.switchEngine('web-speech');
@@ -1264,7 +1274,7 @@
         async function testDashScopeTTS() {
             debugLog('开始测试 DashScope TTS...');
 
-            if (isGitHubPages) {
+            if (isGitHubPages && !hasConfiguredRemoteProxy()) {
                 alert('当前在 GitHub Pages 上运行：DashScope TTS 需要本地/自建代理（浏览器跨域限制）。\n\n可选：\n1) 本地运行 ./start.sh 再访问 http://localhost:3000/\n2) 继续使用 Web Speech（无需后端）');
                 debugLog('GitHub Pages 环境：跳过 DashScope 测试，建议使用 WebSpeech', 'warn');
                 return;
@@ -1308,7 +1318,7 @@
                 
                 // 重新初始化 TTS 服务
                 if (ttsService) {
-                    if (isGitHubPages) {
+                    if (isGitHubPages && !hasConfiguredRemoteProxy()) {
                         debugLog('GitHub Pages 环境：DashScope TTS 不可用，继续使用 WebSpeech', 'warn');
                         try { await ttsService.switchEngine('web-speech'); } catch (e) {}
                     } else {
