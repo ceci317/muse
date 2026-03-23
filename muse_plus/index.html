@@ -816,15 +816,19 @@
         let ttsService = null;
         let debugMode = localStorage.getItem('muse_debug_mode') === 'true';
         const isGitHubPages = window.location.hostname.endsWith('github.io');
-
-        function hasConfiguredRemoteProxy() {
+        
+        function getConfiguredProxyBase() {
             const runtimeProxy = window.MUSE_RUNTIME_CONFIG && window.MUSE_RUNTIME_CONFIG.proxyBase
                 ? String(window.MUSE_RUNTIME_CONFIG.proxyBase).trim()
                 : '';
             const storedProxy = localStorage.getItem('muse_proxy_base')
                 ? String(localStorage.getItem('muse_proxy_base')).trim()
                 : '';
-            return Boolean(runtimeProxy || storedProxy);
+            return runtimeProxy || storedProxy || '';
+        }
+
+        function hasConfiguredRemoteProxy() {
+            return Boolean(getConfiguredProxyBase());
         }
         
         // 调试日志函数
@@ -1067,7 +1071,258 @@
         let hasRecognitionResult = false;
         let recognitionRestartAttempts = 0;
         let recognitionNetworkRetries = 0;
+        let realtimeSocket = null;
+        let realtimeStream = null;
+        let realtimeAudioContext = null;
+        let realtimeSourceNode = null;
+        let realtimeProcessorNode = null;
+        let realtimeReadyForAudio = false;
+        let isRealtimeMode = false;
+        let isAwaitingRealtimeResult = false;
         const defaultStoryInputPlaceholder = '输入或点击麦克风说话...';
+        function setMicUi(active, placeholder = defaultStoryInputPlaceholder) {
+            const input = document.getElementById('story-input');
+            const button = document.getElementById('mic-btn');
+            input.placeholder = placeholder;
+            button.classList.toggle('text-muse-rose', active);
+            button.classList.toggle('border-muse-rose', active);
+        }
+        function buildRealtimeAsrSocketUrl() {
+            const proxyBase = getConfiguredProxyBase();
+            if (!proxyBase) return '';
+            return `${proxyBase.replace(/^http:/, 'ws:').replace(/^https:/, 'wss:').replace(/\/$/, '')}/ws/dashscope/asr?model=qwen-asr-realtime`;
+        }
+        function generateRealtimeEventId() {
+            if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+                return window.crypto.randomUUID();
+            }
+            return `evt-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        }
+        function audioBufferToBase64(buffer) {
+            let binary = '';
+            const bytes = new Uint8Array(buffer);
+            const chunkSize = 0x8000;
+            for (let i = 0; i < bytes.length; i += chunkSize) {
+                binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+            }
+            return btoa(binary);
+        }
+        function convertFloat32ToPcm16Base64(float32Array) {
+            const pcm16 = new Int16Array(float32Array.length);
+            for (let i = 0; i < float32Array.length; i += 1) {
+                const sample = Math.max(-1, Math.min(1, float32Array[i]));
+                pcm16[i] = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
+            }
+            return audioBufferToBase64(pcm16.buffer);
+        }
+        function stopRealtimeAudioCapture() {
+            if (realtimeProcessorNode) {
+                realtimeProcessorNode.disconnect();
+                realtimeProcessorNode.onaudioprocess = null;
+                realtimeProcessorNode = null;
+            }
+            if (realtimeSourceNode) {
+                realtimeSourceNode.disconnect();
+                realtimeSourceNode = null;
+            }
+            if (realtimeStream) {
+                realtimeStream.getTracks().forEach(track => track.stop());
+                realtimeStream = null;
+            }
+            if (realtimeAudioContext) {
+                realtimeAudioContext.close().catch(() => {});
+                realtimeAudioContext = null;
+            }
+            realtimeReadyForAudio = false;
+        }
+        function cleanupRealtimeSpeechSession() {
+            stopRealtimeAudioCapture();
+            if (realtimeSocket) {
+                try {
+                    realtimeSocket.close();
+                } catch (error) {
+                    console.warn('Failed to close realtime ASR socket:', error);
+                }
+                realtimeSocket = null;
+            }
+            if (isAwaitingRealtimeResult && !hasRecognitionResult) {
+                alert('这次没有识别到有效语音。你可以再说近一点、慢一点试一次。');
+            }
+            isListening = false;
+            isRealtimeMode = false;
+            isAwaitingRealtimeResult = false;
+            setMicUi(false);
+        }
+        async function startRealtimeSpeechRecognition() {
+            const socketUrl = buildRealtimeAsrSocketUrl();
+            if (!socketUrl) {
+                throw new Error('未配置可用的语音识别代理');
+            }
+
+            const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContextCtor) {
+                throw new Error('当前浏览器不支持音频采集');
+            }
+
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    channelCount: 1,
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true,
+                },
+            });
+            const audioContext = new AudioContextCtor({ sampleRate: 16000 });
+            await audioContext.resume();
+            const sourceNode = audioContext.createMediaStreamSource(stream);
+            const processorNode = audioContext.createScriptProcessor(4096, 1, 1);
+
+            return new Promise((resolve, reject) => {
+                let settled = false;
+                let captureStarted = false;
+                const socket = new WebSocket(socketUrl);
+
+                const failStartup = (message) => {
+                    stopRealtimeAudioCapture();
+                    try {
+                        socket.close();
+                    } catch (error) {
+                        console.warn('Failed to close startup socket:', error);
+                    }
+                    if (!settled) {
+                        settled = true;
+                        reject(new Error(message));
+                    }
+                };
+
+                const beginAudioCapture = () => {
+                    if (captureStarted) return;
+                    captureStarted = true;
+                    realtimeSocket = socket;
+                    realtimeStream = stream;
+                    realtimeAudioContext = audioContext;
+                    realtimeSourceNode = sourceNode;
+                    realtimeProcessorNode = processorNode;
+                    realtimeReadyForAudio = true;
+                    isRealtimeMode = true;
+                    isListening = true;
+                    isAwaitingRealtimeResult = false;
+                    hasRecognitionResult = false;
+                    setMicUi(true, '正在听你说话...');
+
+                    processorNode.onaudioprocess = (event) => {
+                        if (!realtimeReadyForAudio || !realtimeSocket || realtimeSocket.readyState !== WebSocket.OPEN) return;
+                        const inputData = event.inputBuffer.getChannelData(0);
+                        const base64Audio = convertFloat32ToPcm16Base64(inputData);
+                        realtimeSocket.send(JSON.stringify({
+                            event_id: generateRealtimeEventId(),
+                            type: 'input_audio_buffer.append',
+                            audio: base64Audio,
+                        }));
+                    };
+
+                    sourceNode.connect(processorNode);
+                    processorNode.connect(audioContext.destination);
+
+                    if (!settled) {
+                        settled = true;
+                        resolve();
+                    }
+                };
+
+                socket.onopen = () => {
+                    socket.send(JSON.stringify({
+                        event_id: generateRealtimeEventId(),
+                        type: 'session.update',
+                        session: {
+                            input_audio_format: 'pcm',
+                            sample_rate: 16000,
+                            input_audio_transcription: {
+                                language: 'zh',
+                            },
+                            turn_detection: null,
+                        },
+                    }));
+                };
+
+                socket.onmessage = (messageEvent) => {
+                    let payload = null;
+                    try {
+                        payload = JSON.parse(messageEvent.data);
+                    } catch (error) {
+                        console.warn('Failed to parse realtime ASR message:', messageEvent.data);
+                        return;
+                    }
+
+                    if (payload.type === 'session.created' || payload.type === 'session.updated') {
+                        beginAudioCapture();
+                        return;
+                    }
+
+                    if (payload.type === 'conversation.item.input_audio_transcription.completed') {
+                        hasRecognitionResult = true;
+                        const transcript = String(payload.transcript || '').trim();
+                        if (transcript) {
+                            document.getElementById('story-input').value = transcript;
+                            document.getElementById('story-input').focus();
+                            continueStory();
+                        }
+                        return;
+                    }
+
+                    if (payload.type === 'error') {
+                        const message = payload.message || (payload.error && payload.error.message) || '实时语音识别失败';
+                        if (!settled) {
+                            failStartup(message);
+                        } else {
+                            alert(`语音输入暂时不可用：${message}`);
+                            cleanupRealtimeSpeechSession();
+                        }
+                        return;
+                    }
+
+                    if (payload.type === 'session.finished') {
+                        cleanupRealtimeSpeechSession();
+                    }
+                };
+
+                socket.onerror = () => {
+                    if (!settled) {
+                        failStartup('连接实时语音识别服务失败');
+                    } else {
+                        alert('实时语音识别连接中断了。请再试一次。');
+                        cleanupRealtimeSpeechSession();
+                    }
+                };
+
+                socket.onclose = () => {
+                    if (!settled) {
+                        failStartup('实时语音识别服务提前关闭了连接');
+                    } else if (isRealtimeMode || isAwaitingRealtimeResult) {
+                        cleanupRealtimeSpeechSession();
+                    }
+                };
+            });
+        }
+        function stopRealtimeSpeechRecognition() {
+            if (!realtimeSocket) return;
+            stopRealtimeAudioCapture();
+            isListening = false;
+            isAwaitingRealtimeResult = true;
+            setMicUi(true, '正在识别你刚才的话...');
+            if (realtimeSocket.readyState === WebSocket.OPEN) {
+                realtimeSocket.send(JSON.stringify({
+                    event_id: generateRealtimeEventId(),
+                    type: 'input_audio_buffer.commit',
+                }));
+                realtimeSocket.send(JSON.stringify({
+                    event_id: generateRealtimeEventId(),
+                    type: 'session.finish',
+                }));
+            } else {
+                cleanupRealtimeSpeechSession();
+            }
+        }
         async function ensureMicrophonePermission() {
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return true;
             try {
@@ -1156,6 +1411,22 @@
             }
         }
         async function startListening() {
+            const realtimeSocketUrl = buildRealtimeAsrSocketUrl();
+            if (realtimeSocketUrl) {
+                if (isListening || isAwaitingRealtimeResult) return;
+                const hasPermission = await ensureMicrophonePermission();
+                if (!hasPermission) return;
+                try {
+                    await startRealtimeSpeechRecognition();
+                    return;
+                } catch (error) {
+                    console.warn('Realtime speech recognition failed, fallback to browser API:', error);
+                    alert(`实时语音输入启动失败：${error.message}`);
+                    cleanupRealtimeSpeechSession();
+                    return;
+                }
+            }
+
             if(!recognition) initRecognition();
             if(!recognition) {
                 if(!hasShownSpeechSupportAlert) {
@@ -1180,6 +1451,10 @@
             }
         }
         function stopListening() {
+            if (isRealtimeMode || isAwaitingRealtimeResult) {
+                stopRealtimeSpeechRecognition();
+                return;
+            }
             shouldKeepListening = false;
             if(recognition && isListening) {
                 recognition.stop();

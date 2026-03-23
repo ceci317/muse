@@ -1,4 +1,5 @@
 const DASHSCOPE_API_BASE = 'https://dashscope.aliyuncs.com/api/v1';
+const DASHSCOPE_REALTIME_ASR_URL = 'wss://dashscope.aliyuncs.com/api-ws/v1/realtime';
 
 function json(data, status = 200, origin = '*') {
   return new Response(JSON.stringify(data), {
@@ -33,6 +34,39 @@ function getAllowedOrigin(request, env) {
 
 function getDashScopeKey(request, env) {
   return String(env.DASHSCOPE_API_KEY || request.headers.get('X-Provider-Key') || '').trim();
+}
+
+async function proxyDashScopeAsrWebSocket(request, env) {
+  const apiKey = getDashScopeKey(request, env);
+  if (!apiKey) {
+    return new Response('DashScope API key is not configured', { status: 400 });
+  }
+
+  const upgradeHeader = request.headers.get('Upgrade');
+  if (!upgradeHeader || upgradeHeader.toLowerCase() !== 'websocket') {
+    return new Response('Expected Upgrade: websocket', { status: 426 });
+  }
+
+  const url = new URL(request.url);
+  const model = String(url.searchParams.get('model') || 'qwen-asr-realtime').trim();
+  const upstreamUrl = `${DASHSCOPE_REALTIME_ASR_URL}?model=${encodeURIComponent(model)}`;
+
+  const upstreamResponse = await fetch(upstreamUrl, {
+    headers: {
+      Upgrade: 'websocket',
+      Authorization: `Bearer ${apiKey}`,
+    },
+  });
+
+  if (!upstreamResponse.webSocket) {
+    const errorText = await upstreamResponse.text().catch(() => 'Unable to open upstream websocket');
+    return new Response(errorText, { status: upstreamResponse.status || 502 });
+  }
+
+  return new Response(null, {
+    status: 101,
+    webSocket: upstreamResponse.webSocket,
+  });
 }
 
 async function proxyDashScopeValidate(request, env, origin) {
@@ -180,6 +214,10 @@ export default {
 
     if (url.pathname === '/api/audio/fetch' && request.method === 'GET') {
       return proxyAudioFetch(url.searchParams.get('url'), origin);
+    }
+
+    if (url.pathname === '/ws/dashscope/asr') {
+      return proxyDashScopeAsrWebSocket(request, env);
     }
 
     if (url.pathname === '/api/minimax/validate' && request.method === 'POST') {

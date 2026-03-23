@@ -8,6 +8,7 @@
 - `POST /api/dashscope/validate`
 - `POST /api/dashscope/synthesize`
 - `GET /api/audio/fetch?url=...`
+- `GET /ws/dashscope/asr` WebSocket 语音识别代理
 - `POST /api/minimax/validate` 占位
 - `POST /api/minimax/synthesize` 占位
 
