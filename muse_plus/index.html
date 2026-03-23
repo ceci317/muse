@@ -1066,6 +1066,7 @@
         let shouldKeepListening = false;
         let hasRecognitionResult = false;
         let recognitionRestartAttempts = 0;
+        let recognitionNetworkRetries = 0;
         const defaultStoryInputPlaceholder = '输入或点击麦克风说话...';
         async function ensureMicrophonePermission() {
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return true;
@@ -1090,6 +1091,7 @@
                 recognition.interimResults = false;
                 recognition.onstart = () => {
                     isListening = true;
+                    recognitionNetworkRetries = 0;
                     document.getElementById('story-input').placeholder = '正在听你说话...';
                     document.getElementById('mic-btn').classList.add('text-muse-rose', 'border-muse-rose');
                 };
@@ -1114,12 +1116,28 @@
                     document.getElementById('mic-btn').classList.remove('text-muse-rose', 'border-muse-rose');
                 };
                 recognition.onerror = (event) => {
+                    if (event.error === 'network' && shouldKeepListening && recognitionNetworkRetries < 1) {
+                        recognitionNetworkRetries += 1;
+                        setTimeout(() => {
+                            try {
+                                recognition.start();
+                            } catch (error) {
+                                isListening = false;
+                                shouldKeepListening = false;
+                                document.getElementById('story-input').placeholder = defaultStoryInputPlaceholder;
+                                document.getElementById('mic-btn').classList.remove('text-muse-rose', 'border-muse-rose');
+                            }
+                        }, 300);
+                        return;
+                    }
                     isListening = false;
                     shouldKeepListening = false;
                     document.getElementById('story-input').placeholder = defaultStoryInputPlaceholder;
                     document.getElementById('mic-btn').classList.remove('text-muse-rose', 'border-muse-rose');
                     if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
                         alert('浏览器没有拿到麦克风权限。请先允许麦克风访问，再试一次。');
+                    } else if (event.error === 'network') {
+                        alert('浏览器自己的语音识别服务没有连上，所以这次没法转文字。你可以先重试一次；如果还不行，建议换 Chrome 或 Safari 再试，我也可以继续把它改成我们自己的后端语音识别。');
                     } else if (event.error === 'audio-capture') {
                         alert('浏览器没有找到可用的麦克风设备。请检查系统输入设备设置。');
                     } else if (event.error !== 'aborted') {
