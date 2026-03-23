@@ -7,12 +7,7 @@ class DashScopeEngine {
         this.name = 'dashscope';
         this.displayName = 'DashScope TTS';
         this.apiKey = null;
-        
-        // 检测是否在本地开发环境，如果是则使用代理
-        this.baseUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-            ? 'http://localhost:3001/api/dashscope/api/v1'
-            : 'https://dashscope.aliyuncs.com/api/v1';
-        
+        this.baseUrl = this.resolveBaseUrl();
         console.log('DashScope Base URL:', this.baseUrl);
         
         // Voice mapping from internal names to DashScope voice parameters
@@ -47,6 +42,41 @@ class DashScopeEngine {
             typeof this.baseUrl === 'string' &&
             (this.baseUrl.startsWith('http://localhost:3001/') || this.baseUrl.startsWith('http://127.0.0.1:3001/'))
         );
+    }
+
+    /**
+     * Whether we are using the formal backend proxy.
+     * @returns {boolean}
+     */
+    isBackendProxyMode() {
+        return (
+            typeof this.baseUrl === 'string' &&
+            (this.baseUrl.endsWith('/api/dashscope') || this.baseUrl.includes('/api/dashscope?'))
+        );
+    }
+
+    /**
+     * Resolve API base URL from runtime config, local storage, or local development fallback.
+     * @returns {string}
+     */
+    resolveBaseUrl() {
+        const runtimeConfigBase = typeof window !== 'undefined' && window.MUSE_RUNTIME_CONFIG
+            ? String(window.MUSE_RUNTIME_CONFIG.proxyBase || '').trim()
+            : '';
+        const storedProxyBase = typeof window !== 'undefined'
+            ? String(localStorage.getItem('muse_proxy_base') || '').trim()
+            : '';
+        const configuredProxyBase = runtimeConfigBase || storedProxyBase;
+
+        if (configuredProxyBase) {
+            return `${configuredProxyBase.replace(/\/$/, '')}/api/dashscope`;
+        }
+
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            return 'http://localhost:3001/api/dashscope/api/v1';
+        }
+
+        return 'https://dashscope.aliyuncs.com/api/v1';
     }
 
     /**
@@ -147,22 +177,9 @@ class DashScopeEngine {
                 return { isValid: false, error: this.getCorsHelpMessage() };
             }
 
+            const requestInfo = this.buildValidateRequest();
             // Make a minimal test request to validate the API key
-            const response = await fetch(`${this.baseUrl}/services/aigc/multimodal-generation/generation`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${this.apiKey}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    model: 'qwen3-tts-flash',
-                    input: {
-                        text: '测试',
-                        voice: 'Kai',
-                        language_type: 'Chinese'
-                    }
-                })
-            });
+            const response = await fetch(requestInfo.url, requestInfo.options);
             
             if (response.ok) {
                 return { isValid: true };
@@ -240,18 +257,12 @@ class DashScopeEngine {
                 throw new Error(this.getCorsHelpMessage());
             }
 
-            const apiUrl = `${this.baseUrl}/services/aigc/multimodal-generation/generation`;
+            const requestInfo = this.buildSynthesizeRequest(requestBody);
+            const apiUrl = requestInfo.url;
             console.log('DashScope API URL:', apiUrl);
             console.log('Request body:', JSON.stringify(requestBody, null, 2));
             
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${this.apiKey}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(requestBody)
-            });
+            const response = await fetch(apiUrl, requestInfo.options);
             
             if (!response.ok) {
                 const errorText = await response.text();
@@ -419,7 +430,7 @@ class DashScopeEngine {
      * @returns {string} Playable URL
      */
     getPlayableAudioUrl(audioUrl) {
-        if (!audioUrl || !this.isLocalProxyMode()) {
+        if (!audioUrl) {
             return audioUrl;
         }
 
@@ -432,11 +443,101 @@ class DashScopeEngine {
             if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') {
                 return audioUrl;
             }
+            if (this.isBackendProxyMode()) {
+                const proxyBase = this.baseUrl.replace(/\/api\/dashscope$/, '');
+                return `${proxyBase}/api/audio/fetch?url=${encodeURIComponent(audioUrl)}`;
+            }
+            if (!this.isLocalProxyMode()) {
+                return audioUrl;
+            }
             return `http://localhost:3001/proxy/audio?url=${encodeURIComponent(audioUrl)}`;
         } catch (error) {
             console.warn('Failed to normalize audio URL, using original:', error);
             return audioUrl;
         }
+    }
+
+    /**
+     * Build request for API key validation.
+     * @returns {{url: string, options: object}}
+     */
+    buildValidateRequest() {
+        if (this.isBackendProxyMode()) {
+            return {
+                url: `${this.baseUrl}/validate`,
+                options: {
+                    method: 'POST',
+                    headers: this.buildRequestHeaders(),
+                }
+            };
+        }
+
+        return {
+            url: `${this.baseUrl}/services/aigc/multimodal-generation/generation`,
+            options: {
+                method: 'POST',
+                headers: this.buildRequestHeaders(),
+                body: JSON.stringify({
+                    model: 'qwen3-tts-flash',
+                    input: {
+                        text: '测试',
+                        voice: 'Kai',
+                        language_type: 'Chinese'
+                    }
+                })
+            }
+        };
+    }
+
+    /**
+     * Build request for synthesis.
+     * @param {Object} requestBody - DashScope payload
+     * @returns {{url: string, options: object}}
+     */
+    buildSynthesizeRequest(requestBody) {
+        if (this.isBackendProxyMode()) {
+            return {
+                url: `${this.baseUrl}/synthesize`,
+                options: {
+                    method: 'POST',
+                    headers: this.buildRequestHeaders(),
+                    body: JSON.stringify({
+                        text: requestBody.input.text,
+                        voice: requestBody.input.voice,
+                        language_type: requestBody.input.language_type
+                    })
+                }
+            };
+        }
+
+        return {
+            url: `${this.baseUrl}/services/aigc/multimodal-generation/generation`,
+            options: {
+                method: 'POST',
+                headers: this.buildRequestHeaders(),
+                body: JSON.stringify(requestBody)
+            }
+        };
+    }
+
+    /**
+     * Build request headers depending on current mode.
+     * @returns {Object} Headers
+     */
+    buildRequestHeaders() {
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+
+        if (this.isBackendProxyMode()) {
+            if (this.apiKey) {
+                headers['X-Provider-Key'] = this.apiKey;
+            }
+            return headers;
+        }
+
+        headers['Authorization'] = `Bearer ${this.apiKey}`;
+        return headers;
     }
     
     /**

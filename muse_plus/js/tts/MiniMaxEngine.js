@@ -40,7 +40,7 @@ class MiniMaxEngine {
     }
 
     isValidApiKeyFormat(apiKey) {
-        return typeof apiKey === 'string' && apiKey.trim().length >= 10 && !/\\s/.test(apiKey);
+        return typeof apiKey === 'string' && apiKey.trim().length >= 10 && !/\s/.test(apiKey);
     }
 
     async validateApiKey() {

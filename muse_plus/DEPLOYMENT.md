@@ -121,3 +121,24 @@ dashu
 现在这个项目已经适合继续往“多 TTS Provider 的 Muse Plus 正式版”走了。
 
 你后面接 MiniMax，不需要推翻现有结构，直接顺着 `TTSService + Provider Engine` 这层扩展就行。
+
+## 8. 当前后端目录
+
+仓库里现在已经新增：
+
+- `backend/app.py`
+- `backend/requirements.txt`
+- `backend/.env.example`
+- `backend/README.md`
+
+前端运行时配置文件：
+
+- `muse_plus/js/runtime-config.js`
+
+当你把后端部署到线上后，只需要把 `proxyBase` 改成你的后端地址，例如：
+
+```js
+window.MUSE_RUNTIME_CONFIG = {
+    proxyBase: "https://your-backend.example.com"
+};
+```
