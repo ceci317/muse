@@ -50,14 +50,15 @@ async function proxyDashScopeAsrWebSocket(request, env) {
   const url = new URL(request.url);
   const model = String(url.searchParams.get('model') || 'qwen3-asr-flash-realtime').trim();
   const upstreamUrl = `${DASHSCOPE_REALTIME_ASR_URL}?model=${encodeURIComponent(model)}`;
+  const upstreamHeaders = new Headers(request.headers);
+  upstreamHeaders.set('Authorization', `bearer ${apiKey}`);
+  upstreamHeaders.set('Connection', 'Upgrade');
+  upstreamHeaders.set('Upgrade', 'websocket');
 
-  const upstreamResponse = await fetch(upstreamUrl, {
-    headers: {
-      Upgrade: 'websocket',
-      Connection: 'Upgrade',
-      Authorization: `bearer ${apiKey}`,
-    },
-  });
+  const upstreamResponse = await fetch(new Request(upstreamUrl, {
+    method: request.method,
+    headers: upstreamHeaders,
+  }));
 
   if (!upstreamResponse.webSocket) {
     const errorText = await upstreamResponse.text().catch(() => 'Unable to open upstream websocket');
