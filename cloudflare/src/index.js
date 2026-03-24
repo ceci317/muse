@@ -48,13 +48,14 @@ async function proxyDashScopeAsrWebSocket(request, env) {
   }
 
   const url = new URL(request.url);
-  const model = String(url.searchParams.get('model') || 'qwen-asr-realtime').trim();
+  const model = String(url.searchParams.get('model') || 'qwen3-asr-flash-realtime').trim();
   const upstreamUrl = `${DASHSCOPE_REALTIME_ASR_URL}?model=${encodeURIComponent(model)}`;
 
   const upstreamResponse = await fetch(upstreamUrl, {
     headers: {
       Upgrade: 'websocket',
-      Authorization: `Bearer ${apiKey}`,
+      Connection: 'Upgrade',
+      Authorization: `bearer ${apiKey}`,
     },
   });
 

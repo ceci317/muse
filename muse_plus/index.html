@@ -1090,7 +1090,7 @@
         function buildRealtimeAsrSocketUrl() {
             const proxyBase = getConfiguredProxyBase();
             if (!proxyBase) return '';
-            return `${proxyBase.replace(/^http:/, 'ws:').replace(/^https:/, 'wss:').replace(/\/$/, '')}/ws/dashscope/asr?model=qwen-asr-realtime`;
+            return `${proxyBase.replace(/^http:/, 'ws:').replace(/^https:/, 'wss:').replace(/\/$/, '')}/ws/dashscope/asr?model=qwen3-asr-flash-realtime`;
         }
         function generateRealtimeEventId() {
             if (window.crypto && typeof window.crypto.randomUUID === 'function') {
