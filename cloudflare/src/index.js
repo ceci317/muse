@@ -55,20 +55,19 @@ async function proxyDashScopeAsrWebSocket(request, env) {
   upstreamHeaders.set('Connection', 'Upgrade');
   upstreamHeaders.set('Upgrade', 'websocket');
 
-  const upstreamResponse = await fetch(new Request(upstreamUrl, {
-    method: request.method,
-    headers: upstreamHeaders,
-  }));
+  const upstreamRequest = new Request(upstreamUrl, request);
+  upstreamRequest.headers.set('Authorization', `bearer ${apiKey}`);
+  upstreamRequest.headers.set('Connection', 'Upgrade');
+  upstreamRequest.headers.set('Upgrade', 'websocket');
+
+  const upstreamResponse = await fetch(upstreamRequest);
 
   if (!upstreamResponse.webSocket) {
     const errorText = await upstreamResponse.text().catch(() => 'Unable to open upstream websocket');
     return new Response(errorText, { status: upstreamResponse.status || 502 });
   }
 
-  return new Response(null, {
-    status: 101,
-    webSocket: upstreamResponse.webSocket,
-  });
+  return upstreamResponse;
 }
 
 async function proxyDashScopeValidate(request, env, origin) {
